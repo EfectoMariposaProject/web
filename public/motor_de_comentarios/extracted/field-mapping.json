@@ -1,0 +1,9 @@
+{
+  "author": "comment.user.nickname || comment.user.unique_id || ''",
+  "username": "comment.user.unique_id || ''",
+  "text": "comment.text || ''",
+  "likes": "String(comment.digg_count || 0)",
+  "replies": "String(comment.reply_comment_total || 0)",
+  "created_at": "new Date(Number(comment.create_time) * 1000).toISOString()",
+  "language": "comment.comment_language || ''"
+}

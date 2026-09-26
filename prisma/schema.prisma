@@ -1,0 +1,275 @@
+// Prisma Schema for Efecto Mariposa Project (EMP Story Engine)
+// Enforces 4 Hard Rules & Word Range (Min 69, Max 96 words)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Project {
+  id                         String       @id @default(uuid())
+  name                       String
+  slug                       String       @unique
+  description                String?
+  startDate                  DateTime     @default(now())
+  endDate                    DateTime?
+  status                     String       @default("ACTIVE")
+  dailyWordMin               Int          @default(69) // Mínimo 69 palabras
+  dailyWordMax               Int          @default(96) // Máximo 96 palabras
+  dailyWordLimit             Int          @default(96)
+  dailySelectedContributions Int          @default(3)
+  maxSelectedPerUser         Int          @default(3)
+  createdAt                  DateTime     @default(now())
+  updatedAt                  DateTime     @updatedAt
+
+  days                       ProjectDay[]
+  contributions              Contribution[]
+  characters                 Character[]
+  mysteries                  Mystery[]
+  narrativeSeeds             NarrativeSeed[]
+  manuscripts                Manuscript[]
+}
+
+model ProjectDay {
+  id                 String       @id @default(uuid())
+  projectId          String
+  dayNumber          Int
+  date               DateTime     @default(now())
+  weekNumber         Int          @default(1)
+  status             String       @default("DRAFT")
+  narrativeLine      String?
+  openingText        String?
+  closingText        String?
+  editorialNotes     String?
+  publishedAt        DateTime?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  project            Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  socialPosts        SocialPost[]
+  contributions      Contribution[]
+  selectionRules     DailySelectionRule[]
+  selectionAuditLogs SelectionAuditLog[]
+  manuscriptSections ManuscriptSection[]
+
+  @@unique([projectId, dayNumber])
+}
+
+model SocialPost {
+  id                 String     @id @default(uuid())
+  projectDayId       String
+  challengeDay       Int
+  platform           String     @default("TIKTOK")
+  platformPostId     String?
+  postUrl            String?
+  caption            String?
+  narrativeLine      String?
+  opensAt            DateTime   @default(now())
+  closesAt           DateTime?
+  commentsLockedAt   DateTime?
+  lastCheckedAt      DateTime?
+  status             String     @default("abierto")
+  createdAt          DateTime   @default(now())
+
+  projectDay         ProjectDay @relation(fields: [projectDayId], references: [id], onDelete: Cascade)
+  contributions      Contribution[]
+}
+
+model Participant {
+  id             String         @id @default(uuid())
+  platform       String         @default("TIKTOK")
+  platformUserId String
+  username       String
+  displayName    String?
+  profileUrl     String?
+  avatarUrl      String?
+  selectedCount  Int            @default(0)
+  isBlocked      Boolean        @default(false)
+  declared18Plus Boolean        @default(true)
+  termsAccepted  Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  contributions  Contribution[]
+
+  @@unique([platform, platformUserId])
+}
+
+model Contribution {
+  id                           String       @id @default(uuid())
+  projectId                    String
+  projectDayId                 String
+  socialPostId                 String?
+  
+  globalCommentCode            String       @unique
+  dailyCommentCode             String
+  internalId                   String       @unique
+
+  participantId                String
+  platformCommentId            String?
+  platformCommentUrl           String?
+  originalText                 String
+  originalHash                 String
+  normalizedText               String?
+  wordCount                    Int
+  captureSequence              Int
+  globalSequence               Int          @default(1)
+  receivedAt                   DateTime     @default(now())
+
+  ageDeclarationStatus         String       @default("declared_18_plus")
+  termsAccepted                Boolean      @default(true)
+  lateComment                  Boolean      @default(false)
+
+  status                       String       @default("captured")
+  validationStatus             String       @default("PENDING")
+  validationReasons            String?
+  selectedByRule               Boolean      @default(false)
+  replacementForContributionId String?
+  editorialVersion             String?
+  finalVersion                 String?
+  essencePreserved             Boolean?
+  editorialNotes               String?
+  aiAnalysisJson               String?
+  createdAt                    DateTime     @default(now())
+  updatedAt                    DateTime     @updatedAt
+
+  project                      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectDay                   ProjectDay   @relation(fields: [projectDayId], references: [id], onDelete: Cascade)
+  socialPost                   SocialPost?  @relation(fields: [socialPostId], references: [id], onDelete: SetNull)
+  participant                  Participant  @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  selectedRules                DailySelectionRule[]
+  selectionAuditLogs           SelectionAuditLog[]
+  narrativeSeeds               NarrativeSeed[]
+
+  @@unique([projectDayId, captureSequence])
+}
+
+model DailySelectionRule {
+  id                     String        @id @default(uuid())
+  projectDayId           String
+  slotNumber             Int
+  targetSequence         Int
+  selectedContributionId String?
+  replacementApplied     Boolean       @default(false)
+  replacementReason      String?
+  createdAt              DateTime      @default(now())
+
+  projectDay             ProjectDay    @relation(fields: [projectDayId], references: [id], onDelete: Cascade)
+  selectedContribution   Contribution? @relation(fields: [selectedContributionId], references: [id], onDelete: SetNull)
+
+  @@unique([projectDayId, slotNumber])
+}
+
+model SelectionAuditLog {
+  id                String        @id @default(uuid())
+  projectDayId      String
+  selectionSlot     Int
+  initialTarget     Int
+  candidateSequence Int
+  contributionId    String?
+  valid             Boolean
+  reason            String
+  timestamp         DateTime      @default(now())
+
+  projectDay        ProjectDay    @relation(fields: [projectDayId], references: [id], onDelete: Cascade)
+  contribution      Contribution? @relation(fields: [contributionId], references: [id], onDelete: SetNull)
+}
+
+model AuditLog {
+  id            String   @id @default(uuid())
+  userId        String?
+  action        String
+  entity        String
+  entityId      String
+  previousValue String?
+  newValue      String?
+  reason        String?
+  timestamp     DateTime @default(now())
+}
+
+model Character {
+  id                 String   @id @default(uuid())
+  projectId          String
+  name               String
+  aliases            String?
+  description        String?
+  age                Int?
+  gender             String?
+  status             String   @default("ALIVE")
+  firstAppearanceDay Int?
+  lastAppearanceDay  Int?
+  currentLocation    String?
+  publicInformation  String?
+  secretInformation  String?
+  editorialNotes     String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  project            Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model Mystery {
+  id             String    @id @default(uuid())
+  projectId      String
+  title          String
+  description    String?
+  introducedDay  Int
+  resolvedDay    Int?
+  status         String    @default("OPEN")
+  importance     Int       @default(1)
+  resolution     String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  project        Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model NarrativeSeed {
+  id                   String        @id @default(uuid())
+  projectId            String
+  sourceContributionId String?
+  introducedDay        Int
+  title                String
+  description          String?
+  status               String        @default("OPEN")
+  potentialConnections String?
+  resolvedDay          Int?
+  resolutionText       String?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  project              Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sourceContribution   Contribution? @relation(fields: [sourceContributionId], references: [id], onDelete: SetNull)
+}
+
+model Manuscript {
+  id                 String              @id @default(uuid())
+  projectId          String
+  title              String
+  currentVersion     Int                 @default(1)
+  totalDaysPublished Int                 @default(0)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  project            Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sections           ManuscriptSection[]
+}
+
+model ManuscriptSection {
+  id             String     @id @default(uuid())
+  manuscriptId   String
+  projectDayId   String
+  chapterNumber  Int
+  title          String?
+  content        String
+  editorialNotes String?
+  publishedAt    DateTime   @default(now())
+
+  manuscript     Manuscript @relation(fields: [manuscriptId], references: [id], onDelete: Cascade)
+  projectDay     ProjectDay @relation(fields: [projectDayId], references: [id], onDelete: Cascade)
+}
