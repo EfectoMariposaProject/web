@@ -12,8 +12,16 @@ import {
   FileSpreadsheet, MousePointerClick, Download
 } from 'lucide-react';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 
 export default function DailyProjectPage() {
+  const params = useParams();
+  const dayParam = params?.id ? Number(params.id) : 1;
+  const challengeDay = isNaN(dayParam) || dayParam < 1 ? 1 : Math.min(dayParam, 80);
+  const projectDayId = `day-${String(challengeDay).padStart(3, '0')}`;
+  const weekNumber = Math.ceil(challengeDay / 5);
+  const dayLabel = `DÍA ${String(challengeDay).padStart(2, '0')} — SEMANA ${weekNumber}`;
+
   const [target1, setTarget1] = useState(15);
   const [target2, setTarget2] = useState(38);
   const [target3, setTarget3] = useState(72);
@@ -21,10 +29,10 @@ export default function DailyProjectPage() {
   const [postStatus, setPostStatus] = useState<SocialPostStatus>(SocialPostStatus.ABIERTO);
   const [narrativeLine] = useState('Hoy define qué miedo persigue al protagonista.');
 
-  const [tiktokUrl, setTiktokUrl] = useState('https://www.tiktok.com/@historiasinfin365/video/7673572849923214624');
+  const [tiktokUrl, setTiktokUrl] = useState('');
   const [isFetchingTikTok, setIsFetchingTikTok] = useState(false);
 
-  // Initialized empty for Day 1 real simulation
+  // Initialized empty for current day simulation
   const [csvInput, setCsvInput] = useState<string>('');
 
   const [slotResults, setSlotResults] = useState<SelectionSlotResult[] | null>(null);
@@ -38,15 +46,17 @@ export default function DailyProjectPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState<number>(20);
 
+  const postId = `EMP-POST-${String(challengeDay).padStart(4, '0')}`;
+
   const activePost: SocialPost = {
-    id: 'EMP-POST-0001',
-    project_day_id: 'day-001',
-    challenge_day: 1,
+    id: postId,
+    project_day_id: projectDayId,
+    challenge_day: challengeDay,
     platform: 'TIKTOK' as any,
     narrative_line: narrativeLine,
     status: postStatus,
-    opens_at: '2026-09-20T08:00:00Z',
-    closes_at: '2026-09-20T23:59:00Z',
+    opens_at: new Date().toISOString(),
+    closes_at: new Date().toISOString(),
     created_at: new Date().toISOString(),
   };
 
@@ -108,7 +118,7 @@ export default function DailyProjectPage() {
       const res = await fetch('/api/tiktok/fetch-comments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ videoUrl: tiktokUrl, project_day_id: 'day-001', dayNumber: 1 }),
+        body: JSON.stringify({ videoUrl: tiktokUrl, project_day_id: projectDayId, dayNumber: 1 }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Error al obtener comentarios de TikTok');
@@ -126,7 +136,7 @@ export default function DailyProjectPage() {
         });
 
         const selectionService = new SelectionService();
-        const projectDayId = 'day-001';
+        // projectDayId from URL param
         const total = fetchedContribs.length;
 
         const res1 = selectionService.resolveSlotSelection(1, target1, contributionsMap, participantsMap, projectDayId, total);
@@ -141,7 +151,7 @@ export default function DailyProjectPage() {
         showCustomNotification(
           'SUCCESS',
           '¡Fotografía de Descarga Guardada!',
-          `Se capturó y archivó exitosamente la fotografía de ${data.totalFetched} comentarios de TikTok para la jornada (Día 001).`
+          `Se capturó y archivó exitosamente la fotografía de ${data.totalFetched} comentarios de TikTok para la jornada (${dayLabel}).`
         );
       } else {
         showCustomNotification(
@@ -174,7 +184,7 @@ export default function DailyProjectPage() {
       const replies = c.replies ?? 0;
       const createdAt = c.received_at ? c.received_at.slice(0, 19).replace('T', ' ') : 'N/A';
       const lang = c.language || 'es';
-      const dailyCode = c.daily_comment_code || `D01-C${String(c.capture_sequence).padStart(4, '0')}`;
+      const dailyCode = c.daily_comment_code || `D${String(challengeDay).padStart(2, "0")}-C${String(c.capture_sequence).padStart(4, "0")}`;
       const globalCode = c.global_comment_code || 'N/A';
 
       return [
@@ -207,7 +217,7 @@ export default function DailyProjectPage() {
     setIsExecuting(true);
     try {
       const selectionService = new SelectionService();
-      const projectDayId = 'day-001';
+      // projectDayId from URL param
       const dayNumber = 1;
 
       const contributionsMap = new Map<number, Contribution>();
@@ -284,7 +294,7 @@ export default function DailyProjectPage() {
     const newResult: SelectionSlotResult = {
       slotRule: {
         id: `rule-slot-${slotNumber}`,
-        project_day_id: 'day-001',
+        project_day_id: projectDayId,
         slot_number: slotNumber,
         target_sequence: targetSeq,
         selected_contribution_id: contribution.id,
@@ -301,7 +311,7 @@ export default function DailyProjectPage() {
       replacementChain: [
         {
           id: `audit-manual-slot${slotNumber}`,
-          project_day_id: 'day-001',
+          project_day_id: projectDayId,
           selection_slot: slotNumber,
           initial_target: targetSeq,
           candidate_sequence: contribution.capture_sequence,
@@ -330,7 +340,7 @@ export default function DailyProjectPage() {
   useEffect(() => {
     const loadSavedContributions = async () => {
       try {
-        const res = await fetch('/api/contributions?projectDayId=day-001');
+        const res = await fetch('`/api/contributions?projectDayId=${projectDayId}`');
         const data = await res.json();
         if (data.success && Array.isArray(data.contributions) && data.contributions.length > 0) {
           const fetchedContribs: Contribution[] = data.contributions;
@@ -340,9 +350,9 @@ export default function DailyProjectPage() {
           fetchedContribs.forEach((c) => contributionsMap.set(c.capture_sequence, c));
           const selectionService = new SelectionService();
           const totalItems = fetchedContribs.length;
-          const res1 = selectionService.resolveSlotSelection(1, target1, contributionsMap, participantsMap, 'day-001', totalItems);
-          const res2 = selectionService.resolveSlotSelection(2, target2, contributionsMap, participantsMap, 'day-001', totalItems);
-          const res3 = selectionService.resolveSlotSelection(3, target3, contributionsMap, participantsMap, 'day-001', totalItems);
+          const res1 = selectionService.resolveSlotSelection(1, target1, contributionsMap, participantsMap, projectDayId, totalItems);
+          const res2 = selectionService.resolveSlotSelection(2, target2, contributionsMap, participantsMap, projectDayId, totalItems);
+          const res3 = selectionService.resolveSlotSelection(3, target3, contributionsMap, participantsMap, projectDayId, totalItems);
           setSlotResults([res1, res2, res3]);
         } else {
           setAllContributions([]);
@@ -952,7 +962,7 @@ export default function DailyProjectPage() {
                     <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 mb-3 space-y-1 text-[11px] font-mono">
                       <div className="flex justify-between items-center">
                         <span className="text-slate-500 font-medium">ID Diario:</span>
-                        <span className="font-bold text-blue-900">{contrib.daily_comment_code || `D01-C${String(contrib.capture_sequence).padStart(4, '0')}`}</span>
+                        <span className="font-bold text-blue-900">{contrib.daily_comment_code || `D${String(challengeDay).padStart(2, "0")}-C${String(contrib.capture_sequence).padStart(4, "0")}`}</span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-slate-500 font-medium">Username:</span>
@@ -1268,7 +1278,7 @@ export default function DailyProjectPage() {
                 ¿Deseas planchar y re-descargar comentarios?
               </h3>
               <p className="text-xs text-slate-600 font-medium leading-relaxed">
-                Esta jornada (Día 001) ya cuenta con una <strong>fotografía respaldada</strong> de <strong className="text-slate-900">{allContributions.length} comentarios</strong>. Re-descargar reemplazará la captura actual y afectará las secuencias registradas.
+                Esta jornada ({dayLabel}) ya cuenta con una <strong>fotografía respaldada</strong> de <strong className="text-slate-900">{allContributions.length} comentarios</strong>. Re-descargar reemplazará la captura actual y afectará las secuencias registradas.
               </p>
             </div>
 

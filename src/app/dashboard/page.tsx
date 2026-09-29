@@ -1,12 +1,15 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Sparkles, Users, FileText, CheckCircle, BookOpen, Layers, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Sparkles, Users, FileText, CheckCircle, BookOpen, Layers, ArrowRight, ShieldCheck, Calendar, ChevronRight } from 'lucide-react';
 
 export default function DashboardPage() {
-  const kpis = {
+  const [selectedDay, setSelectedDay] = useState<number>(1);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [kpis, setKpis] = useState({
     dayNumber: 1,
-    totalDays: 365,
+    totalDays: 80,
     weekNumber: 1,
     totalContributions: 0,
     dailyContributions: 0,
@@ -17,10 +20,65 @@ export default function DashboardPage() {
     authorsWith1: 0,
     authorsWith2: 0,
     authorsWith3Max: 0,
-    openMysteries: 0,
-    activeSeeds: 0,
+    openMysteries: 3,
+    activeSeeds: 5,
     pendingContradictions: 0,
-  };
+  });
+
+  const projectDayId = `day-${String(selectedDay).padStart(3, '0')}`;
+  const weekNumber = Math.ceil(selectedDay / 5);
+
+  useEffect(() => {
+    const fetchDayMetrics = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/contributions?projectDayId=${projectDayId}`);
+        const data = await res.json();
+
+        let contribs: any[] = [];
+        if (data.success && Array.isArray(data.contributions)) {
+          contribs = data.contributions;
+        }
+
+        const valid = contribs.filter((c) => c.word_count >= 100 && c.word_count <= 150).length;
+        const invalid = contribs.length - valid;
+
+        // Fetch selection results
+        const resSel = await fetch(`/api/selection?projectDayId=${projectDayId}`);
+        const dataSel = await resSel.json();
+        let incCount = 0;
+        if (dataSel.success && Array.isArray(dataSel.results)) {
+          incCount = dataSel.results.filter((r: any) => r.selectedContribution).length;
+        }
+
+        const authorsSet = new Set(contribs.map((c) => c.participant_id || c.author_handle));
+
+        setKpis({
+          dayNumber: selectedDay,
+          totalDays: 80,
+          weekNumber,
+          totalContributions: contribs.length,
+          dailyContributions: contribs.length,
+          validContributions: valid,
+          invalidContributions: invalid,
+          incorporatedContributions: incCount,
+          uniqueAuthors: authorsSet.size,
+          authorsWith1: Math.min(authorsSet.size, 1),
+          authorsWith2: 0,
+          authorsWith3Max: 0,
+          openMysteries: 3,
+          activeSeeds: 5,
+          pendingContradictions: 0,
+        });
+      } catch (err) {
+        console.warn('Error al cargar KPIs del dashboard:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDayMetrics();
+  }, [selectedDay, projectDayId, weekNumber]);
 
   return (
     <div className="space-y-8">
@@ -30,9 +88,9 @@ export default function DashboardPage() {
           <div>
             <div className="flex items-center gap-3 mb-2">
               <span className="px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 border border-amber-300 text-amber-900 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-amber-600" /> RETO EN CURSO (365 DÍAS)
+                <Sparkles className="w-3.5 h-3.5 text-amber-600" /> RETO EN CURSO (4 MESES / 80 DÍAS)
               </span>
-              <span className="text-slate-500 text-xs font-mono font-semibold">SEMANA {kpis.weekNumber}</span>
+              <span className="text-slate-500 text-xs font-mono font-semibold">SEMANA {weekNumber}</span>
             </div>
             <h1 className="text-4xl font-serif font-bold text-slate-900 tracking-tight">
               EFECTO MARIPOSA <span className="gold-gradient-text">PROJECT</span>
@@ -42,10 +100,27 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          <div className="flex items-baseline gap-2 bg-white px-6 py-4 rounded-xl border border-amber-300 shadow-sm">
-            <span className="text-xs text-slate-500 font-mono uppercase tracking-wider block font-semibold">Jornada Activa:</span>
-            <span className="text-3xl font-serif font-bold text-amber-700">DÍA {kpis.dayNumber}</span>
-            <span className="text-slate-400 font-mono text-sm">/ {kpis.totalDays}</span>
+          {/* Dynamic Day Selector */}
+          <div className="flex flex-col items-end gap-2">
+            <div className="flex items-center gap-2 bg-white px-5 py-3 rounded-xl border border-amber-300 shadow-xs">
+              <Calendar className="w-4 h-4 text-amber-700" />
+              <span className="text-xs text-slate-600 font-mono uppercase tracking-wider font-bold">Jornada:</span>
+              <select
+                value={selectedDay}
+                onChange={(e) => setSelectedDay(Number(e.target.value))}
+                className="bg-amber-50 text-amber-900 font-serif font-bold text-lg px-2.5 py-1 rounded-lg border border-amber-300 outline-none cursor-pointer hover:bg-amber-100 transition-colors"
+              >
+                {Array.from({ length: 80 }, (_, i) => i + 1).map((d) => (
+                  <option key={d} value={d}>
+                    DÍA {String(d).padStart(2, '0')} (Semana {Math.ceil(d / 5)})
+                  </option>
+                ))}
+              </select>
+              <span className="text-slate-400 font-mono text-sm">/ 80</span>
+            </div>
+            <span className="text-[11px] text-slate-500 font-mono font-medium">
+              Lunes a Viernes • 16 Semanas Totales
+            </span>
           </div>
         </div>
       </div>
@@ -54,10 +129,12 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="glass-panel p-5 rounded-2xl border border-slate-200 bg-white shadow-xs">
           <div className="flex justify-between items-center text-slate-500 mb-2">
-            <span className="text-xs uppercase font-semibold">Participaciones Hoy</span>
+            <span className="text-xs uppercase font-semibold">Participaciones Día {selectedDay}</span>
             <FileText className="w-4 h-4 text-amber-600" />
           </div>
-          <div className="text-2xl font-bold text-slate-900 font-mono">{kpis.dailyContributions.toLocaleString()}</div>
+          <div className="text-2xl font-bold text-slate-900 font-mono">
+            {loading ? '...' : kpis.dailyContributions.toLocaleString()}
+          </div>
           <div className="flex items-center gap-2 text-xs mt-2 text-slate-600">
             <span className="text-emerald-700 font-semibold">✓ {kpis.validContributions} válidas</span>
             <span>•</span>
@@ -70,9 +147,11 @@ export default function DashboardPage() {
             <span className="text-xs uppercase font-semibold">Incorporadas a Novela</span>
             <CheckCircle className="w-4 h-4 text-emerald-600" />
           </div>
-          <div className="text-2xl font-bold text-emerald-700 font-mono">{kpis.incorporatedContributions}</div>
+          <div className="text-2xl font-bold text-emerald-700 font-mono">
+            {loading ? '...' : kpis.incorporatedContributions}
+          </div>
           <div className="text-xs text-slate-500 mt-2">
-            Total acumulado en {kpis.dayNumber} días transcurridos
+            Selecciones oficiales Día {selectedDay}
           </div>
         </div>
 
@@ -81,7 +160,9 @@ export default function DashboardPage() {
             <span className="text-xs uppercase font-semibold">Autores Únicos</span>
             <Users className="w-4 h-4 text-blue-600" />
           </div>
-          <div className="text-2xl font-bold text-slate-900 font-mono">{kpis.uniqueAuthors.toLocaleString()}</div>
+          <div className="text-2xl font-bold text-slate-900 font-mono">
+            {loading ? '...' : kpis.uniqueAuthors.toLocaleString()}
+          </div>
           <div className="text-xs text-slate-500 mt-2">
             {kpis.authorsWith3Max} autores han alcanzado el límite (3/3)
           </div>
@@ -146,26 +227,27 @@ export default function DashboardPage() {
         <div className="glass-panel p-6 rounded-2xl border border-slate-200 bg-white shadow-xs flex flex-col justify-between space-y-4">
           <div>
             <h2 className="text-sm font-semibold uppercase tracking-wider text-amber-800 flex items-center gap-2 mb-2">
-              <Layers className="w-4 h-4 text-amber-600" /> Gestión Operativa del Día
+              <Layers className="w-4 h-4 text-amber-600" /> Gestión Operativa del Día {selectedDay}
             </h2>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Accede al panel de control para importar comentarios del día, ejecutar la regla determinista +3 y curar las selecciones oficiales.
+              Accede al panel de control de la jornada {selectedDay} para ingresar el link de TikTok, descargar comentarios en tiempo real y ejecutar la selección por Target IDs.
             </p>
           </div>
 
           <div className="space-y-2">
             <Link
-              href="/project/day/1"
-              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-md transition-all"
+              href={`/project/day/${selectedDay}`}
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-md transition-all"
             >
-              <span>Ir a Jornada Diaria (Motor de Selección)</span>
+              <span>Ir a Jornada Diaria (Día {String(selectedDay).padStart(2, '0')})</span>
               <ArrowRight className="w-4 h-4" />
             </Link>
             <Link
               href="/editorial"
               className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-medium text-xs transition-colors border border-slate-200"
             >
-              <span>Abrir Workbench Editorial (3 Columnas)</span>
+              <span>Abrir Workbench Editorial</span>
+              <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
             </Link>
           </div>
         </div>
