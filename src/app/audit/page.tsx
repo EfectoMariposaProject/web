@@ -2,17 +2,17 @@
 
 import { useState, useEffect } from 'react';
 import { History, ShieldCheck, Lock, RefreshCw } from 'lucide-react';
+import { useEmpCache } from '@/lib/cache/CacheProvider';
 
 export default function AuditPage() {
+  const { fetchWithCache } = useEmpCache();
   const [isMounted, setIsMounted] = useState(false);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   const fetchAuditData = async () => {
-    setIsLoading(true);
     try {
-      const res = await fetch('/api/audit');
-      const data = await res.json();
+      const data = await fetchWithCache('/api/audit');
       if (data.success && Array.isArray(data.auditLogs)) {
         setAuditLogs(data.auditLogs);
       }
@@ -26,7 +26,8 @@ export default function AuditPage() {
   useEffect(() => {
     setIsMounted(true);
     fetchAuditData();
-  }, []);
+  }, [fetchWithCache]);
+
 
   return (
     <div className="space-y-8 font-sans pb-16">

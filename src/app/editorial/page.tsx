@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { 
   Feather, Check, Sparkles, ShieldCheck, RefreshCw, BookOpen, Users, MapPin, 
-  UserCheck, Shield, Layers, Copy, CheckCircle2
+  UserCheck, Shield, Layers, Copy, CheckCircle2, AlertTriangle
 } from 'lucide-react';
 import { MockAIProvider } from '@/lib/ai/mock-ai-provider';
+import { useEmpCache } from '@/lib/cache/CacheProvider';
 
 interface CandidateSlot {
   id: string;
@@ -28,6 +29,8 @@ export default function EditorialWorkbenchPage() {
   const weekNumber = Math.ceil(selectedDay / 5);
   const dayLabel = `DÍA ${String(selectedDay).padStart(2, '0')} — SEMANA ${weekNumber}`;
 
+  const { fetchWithCache, invalidateDay, invalidate } = useEmpCache();
+
   const [candidateSlots, setCandidateSlots] = useState<CandidateSlot[]>([]);
   const [activeSlotIndex, setActiveSlotIndex] = useState(0);
   const currentSlot = candidateSlots[activeSlotIndex] || null;
@@ -43,14 +46,16 @@ export default function EditorialWorkbenchPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isApproved, setIsApproved] = useState(false);
   const [successToast, setSuccessToast] = useState('');
+  const [errorToast, setErrorToast] = useState('');
 
   // Toggle state for side panels and Bible drawer
   const [showBibleDrawer, setShowBibleDrawer] = useState(true);
 
-  const fetchSelectedSlots = async () => {
+  const fetchSelectedSlots = async (forceRefresh = false) => {
     try {
-      const res = await fetch(`/api/selection?projectDayId=${projectDayId}`);
-      const data = await res.json();
+      const data = await fetchWithCache(`/api/selection?projectDayId=${projectDayId}`, undefined, {
+        forceRefresh,
+      });
       if (data.success && Array.isArray(data.results) && data.results.length > 0) {
         const slots: CandidateSlot[] = data.results.map((r: any) => {
           const contrib = r.selectedContribution;
@@ -76,6 +81,8 @@ export default function EditorialWorkbenchPage() {
           setEditorialVersion(first.finalVersion || first.aiSuggestion);
           setIsApproved(first.status === 'PUBLISHED');
         }
+      } else {
+        setCandidateSlots([]);
       }
     } catch (err) {
       console.warn('Error al obtener slots en Editorial:', err);
@@ -87,7 +94,7 @@ export default function EditorialWorkbenchPage() {
     setActiveSlotIndex(0);
     fetchSelectedSlots();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDay]);
+  }, [selectedDay, projectDayId]);
 
   const handleSelectSlot = (index: number) => {
     setActiveSlotIndex(index);
@@ -118,7 +125,8 @@ export default function EditorialWorkbenchPage() {
   const handleApprove = async () => {
     if (!currentSlot) return;
     if (!essencePreserved) {
-      alert('ATENCIÓN: Debe marcar "✓ Sí, Preservada" para cumplir la Regla Editorial de no alterar la esencia de la aportación.');
+      setErrorToast('ATENCIÓN: Debe marcar "✓ Sí, Preservada" para cumplir la Regla Editorial de no alterar la esencia de la aportación.');
+      setTimeout(() => setErrorToast(''), 5000);
       return;
     }
 
@@ -142,10 +150,16 @@ export default function EditorialWorkbenchPage() {
 
       setIsApproved(true);
       setSuccessToast(`¡Slot ${currentSlot.slotNumber} (@${currentSlot.username}) Aprobado e Incorporado Exitosamente al Manuscrito!`);
-      await fetchSelectedSlots();
+      
+      // Invalidate caches so other screens immediately see the updated manuscript
+      invalidateDay(projectDayId);
+      invalidate('/api/manuscript');
+      
+      await fetchSelectedSlots(true);
       setTimeout(() => setSuccessToast(''), 5000);
     } catch (err: any) {
-      alert(`Error al incorporar revisión: ${err.message}`);
+      setErrorToast(`Error al incorporar revisión: ${err.message}`);
+      setTimeout(() => setErrorToast(''), 5000);
     } finally {
       setIsSaving(false);
     }
@@ -160,6 +174,14 @@ export default function EditorialWorkbenchPage() {
           <span className="text-xs font-bold font-mono">{successToast}</span>
         </div>
       )}
+
+      {errorToast && (
+        <div className="fixed top-6 right-6 z-50 bg-rose-700 text-white p-4 rounded-2xl shadow-xl border border-rose-500 flex items-center gap-3">
+          <AlertTriangle className="w-6 h-6 text-rose-300" />
+          <span className="text-xs font-bold font-mono">{errorToast}</span>
+        </div>
+      )}
+
 
       {/* Header & Main Control Bar */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border-b border-slate-200 pb-5">

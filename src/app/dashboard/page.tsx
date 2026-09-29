@@ -3,10 +3,13 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Sparkles, Users, FileText, CheckCircle, BookOpen, Layers, ArrowRight, ShieldCheck, Calendar, ChevronRight } from 'lucide-react';
+import { useEmpCache } from '@/lib/cache/CacheProvider';
 
 export default function DashboardPage() {
   const [selectedDay, setSelectedDay] = useState<number>(1);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(false);
+  const { fetchWithCache } = useEmpCache();
+
   const [kpis, setKpis] = useState({
     dayNumber: 1,
     totalDays: 80,
@@ -29,25 +32,27 @@ export default function DashboardPage() {
   const weekNumber = Math.ceil(selectedDay / 5);
 
   useEffect(() => {
+    let isCancelled = false;
+
     const fetchDayMetrics = async () => {
-      setLoading(true);
       try {
-        const res = await fetch(`/api/contributions?projectDayId=${projectDayId}`);
-        const data = await res.json();
+        const [dataContribs, dataSel] = await Promise.all([
+          fetchWithCache(`/api/contributions?projectDayId=${projectDayId}`),
+          fetchWithCache(`/api/selection?projectDayId=${projectDayId}`),
+        ]);
+
+        if (isCancelled) return;
 
         let contribs: any[] = [];
-        if (data.success && Array.isArray(data.contributions)) {
-          contribs = data.contributions;
+        if (dataContribs?.success && Array.isArray(dataContribs.contributions)) {
+          contribs = dataContribs.contributions;
         }
 
         const valid = contribs.filter((c) => c.word_count >= 100 && c.word_count <= 150).length;
         const invalid = contribs.length - valid;
 
-        // Fetch selection results
-        const resSel = await fetch(`/api/selection?projectDayId=${projectDayId}`);
-        const dataSel = await resSel.json();
         let incCount = 0;
-        if (dataSel.success && Array.isArray(dataSel.results)) {
+        if (dataSel?.success && Array.isArray(dataSel.results)) {
           incCount = dataSel.results.filter((r: any) => r.selectedContribution).length;
         }
 
@@ -71,14 +76,19 @@ export default function DashboardPage() {
           pendingContradictions: 0,
         });
       } catch (err) {
-        console.warn('Error al cargar KPIs del dashboard:', err);
+        console.warn('Error al cargar KPIs del dashboard desde caché/API:', err);
       } finally {
-        setLoading(false);
+        if (!isCancelled) setLoading(false);
       }
     };
 
     fetchDayMetrics();
-  }, [selectedDay, projectDayId, weekNumber]);
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [selectedDay, projectDayId, weekNumber, fetchWithCache]);
+
 
   return (
     <div className="space-y-8">

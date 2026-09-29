@@ -7,6 +7,8 @@ import {
   FileText, Lock, Unlock, Upload, Play, Trash2, AlertTriangle, ShieldCheck, X, Eye, FileCode, GitCompare, Code2,
   History, RotateCcw
 } from 'lucide-react';
+import { useEmpCache } from '@/lib/cache/CacheProvider';
+
 
 interface NovelDay {
   dayNumber: number;
@@ -539,11 +541,11 @@ export default function StoryBiblePage() {
   const [newCharDesc, setNewCharDesc] = useState('');
   const [showNewCharModal, setShowNewCharModal] = useState(false);
 
-  const fetchBibleData = async () => {
-    setIsLoading(true);
+  const { fetchWithCache, invalidate } = useEmpCache();
+
+  const fetchBibleData = async (forceRefresh = false) => {
     try {
-      const res = await fetch('/api/story-bible');
-      const data = await res.json();
+      const data = await fetchWithCache('/api/story-bible', undefined, { forceRefresh });
       if (data.success) {
         setCharacters(data.characters || []);
         setMysteries(data.mysteries || []);
@@ -623,7 +625,8 @@ export default function StoryBiblePage() {
         throw new Error(data.error || 'Error al procesar la historia');
       }
 
-      await fetchBibleData();
+      invalidate('/api/story-bible');
+      await fetchBibleData(true);
 
       showModal(
         'SUCCESS',
@@ -645,6 +648,7 @@ export default function StoryBiblePage() {
       setIsProcessingRaw(false);
     }
   };
+
 
   const handleLoadDemoText = () => {
     setInputTitle('LA HABITACIÓN QUE NO EXISTÍA');
@@ -741,6 +745,7 @@ Padre de Elena y Mateo. Vive en otra ciudad y se niega a regresar a la casa. Cua
             openingText: editLineText,
           }),
         });
+        invalidate('/api/story-bible');
         showModal('SUCCESS', 'Línea Guardada', `La línea narrativa del Día ${editingDayNumber} se actualizó correctamente.`);
       } catch (err: any) {
         showModal('ERROR', 'Error al Guardar', err.message || 'No se pudo guardar la línea narrativa del día.');
@@ -770,7 +775,8 @@ Padre de Elena y Mateo. Vive en otra ciudad y se niega a regresar a la casa. Cua
         setNewCharName('');
         setNewCharDesc('');
         setShowNewCharModal(false);
-        await fetchBibleData();
+        invalidate('/api/story-bible');
+        await fetchBibleData(true);
         showModal('SUCCESS', 'Personaje Registrado', `El personaje "${newCharName}" se añadió a la Biblia de Novela.`);
       }
     } catch (err: any) {
@@ -1397,6 +1403,7 @@ Padre de Elena y Mateo. Vive en otra ciudad y se niega a regresar a la casa. Cua
                                     openingText: d.narrativeLine,
                                   }),
                                 });
+                                invalidate('/api/story-bible');
                                 const vNum = handleSaveDayVersion(d.dayNumber, d.narrativeLine, isAiEdited);
                                 showModal(
                                   'SUCCESS',

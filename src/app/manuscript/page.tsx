@@ -18,8 +18,10 @@ import {
   ChevronRight,
   Filter,
 } from 'lucide-react';
+import { useEmpCache } from '@/lib/cache/CacheProvider';
 
 export default function ManuscriptPage() {
+  const { fetchWithCache } = useEmpCache();
   const [projectData, setProjectData] = useState<any>(null);
   const [chapters, setChapters] = useState<any[]>([]);
   const [stats, setStats] = useState<any>({
@@ -30,7 +32,7 @@ export default function ManuscriptPage() {
     uniqueAuthorsCount: 0,
     guinnessStatus: 'CERTIFICADO CON SELLO SHA-256 INMUTABLE',
   });
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   // View state
   const [viewMode, setViewMode] = useState<'full' | 'single'>('full');
@@ -38,10 +40,8 @@ export default function ManuscriptPage() {
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   const fetchManuscript = async () => {
-    setIsLoading(true);
     try {
-      const res = await fetch('/api/manuscript');
-      const data = await res.json();
+      const data = await fetchWithCache('/api/manuscript');
 
       if (data.success) {
         setProjectData(data.project);
@@ -57,7 +57,8 @@ export default function ManuscriptPage() {
 
   useEffect(() => {
     fetchManuscript();
-  }, []);
+  }, [fetchWithCache]);
+
 
   // Filtering chapters based on search query or selected day
   const filteredChapters = chapters.filter((ch) => {

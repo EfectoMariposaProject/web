@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { LiteraryAnalyzer } from '@/core/literary/literary-analyzer';
 import { LiteraryAnalysisResult } from '@/core/literary/literary-types';
 import {
@@ -17,15 +17,17 @@ import {
   RefreshCw,
   Flame,
 } from 'lucide-react';
+import { useEmpCache } from '@/lib/cache/CacheProvider';
 
 export default function LiteraryLabPage() {
+  const { fetchWithCache } = useEmpCache();
   const [activeTab, setActiveTab] = useState<'actants' | 'syntax' | 'prompts'>('actants');
   const [sampleText, setSampleText] = useState(
     'Elena recordó la caja de música de su infancia cuando su enemigo secreto amenazó con destruir el mapa del tesoro en la habitación.'
   );
   const [analysisResult, setAnalysisResult] = useState<LiteraryAnalysisResult | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   // TikTok OpenAI Prompts State & 4-Month Challenge Planner (80 Days: Mon-Fri x 16 Weeks x 4 Months)
   const [tiktokPrompts, setTiktokPrompts] = useState<any[]>([]);
@@ -66,7 +68,7 @@ export default function LiteraryLabPage() {
 
   const [structuralHealthScore, setStructuralHealthScore] = useState(91.5);
 
-  const analyzer = new LiteraryAnalyzer();
+  const analyzer = useMemo(() => new LiteraryAnalyzer(), []);
 
   const fetchTiktokPromptsForDay = async (dayNum: number, weekNum: number, monthNum: number, dayName: string, plot: string) => {
     setIsGeneratingPrompts(true);
@@ -78,8 +80,7 @@ export default function LiteraryLabPage() {
         dayOfWeek: dayName,
         plotContext: plot,
       });
-      const res = await fetch(`/api/literary/analyze?${query.toString()}`);
-      const data = await res.json();
+      const data = await fetchWithCache(`/api/literary/analyze?${query.toString()}`);
       if (data.success && Array.isArray(data.prompts) && data.prompts.length > 0) {
         setTiktokPrompts(data.prompts);
         setPromptsSource(data.source || 'LOCAL_FALLBACK');
@@ -120,12 +121,10 @@ export default function LiteraryLabPage() {
 
   useEffect(() => {
     const runFullManuscriptAudit = async () => {
-      setIsLoading(true);
       try {
-        const res = await fetch('/api/story-bible');
-        const data = await res.json();
-
+        const data = await fetchWithCache('/api/story-bible');
         const textsToAnalyze: string[] = [];
+
 
         if (data.success) {
           const daysMap: Record<number, string> = {};

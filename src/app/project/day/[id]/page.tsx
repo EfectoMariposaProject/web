@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { useEmpCache } from '@/lib/cache/CacheProvider';
 
 export default function DailyProjectPage() {
   const params = useParams();
@@ -22,15 +23,20 @@ export default function DailyProjectPage() {
   const weekNumber = Math.ceil(challengeDay / 5);
   const dayLabel = `DÍA ${String(challengeDay).padStart(2, '0')} — SEMANA ${weekNumber}`;
 
+  const { fetchWithCache, invalidateDay, markDayClosed, isDayClosed } = useEmpCache();
+
   const [target1, setTarget1] = useState(15);
   const [target2, setTarget2] = useState(38);
   const [target3, setTarget3] = useState(72);
 
-  const [postStatus, setPostStatus] = useState<SocialPostStatus>(SocialPostStatus.ABIERTO);
+  const [postStatus, setPostStatus] = useState<SocialPostStatus>(() =>
+    isDayClosed(projectDayId) ? SocialPostStatus.CERRADO : SocialPostStatus.ABIERTO
+  );
   const [narrativeLine] = useState('Hoy define qué miedo persigue al protagonista.');
 
   const [tiktokUrl, setTiktokUrl] = useState('');
   const [isFetchingTikTok, setIsFetchingTikTok] = useState(false);
+
 
   // Initialized empty for current day simulation
   const [csvInput, setCsvInput] = useState<string>('');
@@ -148,6 +154,9 @@ export default function DailyProjectPage() {
         setSearchQuery(''); // Clear search filter to show all fetched comments immediately
         setCurrentPage(1);
 
+        // Invalidate day cache so all other views fetch the fresh contributions
+        invalidateDay(projectDayId);
+
         showCustomNotification(
           'SUCCESS',
           '¡Fotografía de Descarga Guardada!',
@@ -241,14 +250,14 @@ export default function DailyProjectPage() {
           batch.participants.forEach((p) => participantsMap.set(p.id, p));
           batch.contributions.forEach((c) => contributionsMap.set(c.capture_sequence, c));
           setAllContributions(Array.from(contributionsMap.values()));
+          invalidateDay(projectDayId);
         }
       } else if (allContributions.length > 0) {
         allContributions.forEach((c) => {
           contributionsMap.set(c.capture_sequence, c);
         });
       } else {
-        const res = await fetch(`/api/contributions?projectDayId=${projectDayId}`);
-        const data = await res.json();
+        const data = await fetchWithCache(`/api/contributions?projectDayId=${projectDayId}`);
         if (data.success && Array.isArray(data.contributions) && data.contributions.length > 0) {
           const fetchedContribs: Contribution[] = data.contributions;
           setAllContributions(fetchedContribs);
@@ -273,6 +282,7 @@ export default function DailyProjectPage() {
       setSlotResults(results);
       setSearchQuery('');
       setCurrentPage(1);
+      invalidateDay(projectDayId);
 
       showCustomNotification(
         'SUCCESS',
@@ -329,6 +339,8 @@ export default function DailyProjectPage() {
     }
 
     setSlotResults(currentResults);
+    invalidateDay(projectDayId);
+
     showCustomNotification(
       'SUCCESS',
       '¡Asignación Guardada!',
@@ -337,10 +349,13 @@ export default function DailyProjectPage() {
   };
 
   useEffect(() => {
+    let isCancelled = false;
+
     const loadSavedContributions = async () => {
       try {
-        const res = await fetch(`/api/contributions?projectDayId=${projectDayId}`);
-        const data = await res.json();
+        const data = await fetchWithCache(`/api/contributions?projectDayId=${projectDayId}`);
+        if (isCancelled) return;
+
         if (data.success && Array.isArray(data.contributions) && data.contributions.length > 0) {
           const fetchedContribs: Contribution[] = data.contributions;
           setAllContributions(fetchedContribs);
@@ -358,12 +373,20 @@ export default function DailyProjectPage() {
           setSlotResults(null);
         }
       } catch (err) {
-        setAllContributions([]);
-        setSlotResults(null);
+        if (!isCancelled) {
+          setAllContributions([]);
+          setSlotResults(null);
+        }
       }
     };
+
     loadSavedContributions();
-  }, [target1, target2, target3, projectDayId]);
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [target1, target2, target3, projectDayId, fetchWithCache]);
+
 
   const selectedSlotsMap = useMemo(() => {
     const map = new Map<number, { slotNumber: number; replacementApplied: boolean; originalTarget: number }>();
@@ -489,7 +512,12 @@ export default function DailyProjectPage() {
         <div className="flex items-center gap-3">
           <select
             value={postStatus}
-            onChange={(e) => setPostStatus(e.target.value as SocialPostStatus)}
+            onChange={(e) => {
+              const newStatus = e.target.value as SocialPostStatus;
+              setPostStatus(newStatus);
+              const isClosed = newStatus === SocialPostStatus.CERRADO || newStatus === SocialPostStatus.PROCESADO || newStatus === SocialPostStatus.ARCHIVADO;
+              markDayClosed(projectDayId, isClosed);
+            }}
             className="bg-white border border-slate-300 text-xs text-slate-800 font-bold px-3 py-2 rounded-lg outline-none focus:border-blue-500 shadow-2xs"
           >
             <option value={SocialPostStatus.ABIERTO}>Publicación: ABIERTO</option>
