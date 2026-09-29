@@ -58,7 +58,7 @@ export class StoryRepository {
     if (!post) {
       post = await prisma.socialPost.create({
         data: {
-          id: 'EMP-POST-0001',
+          id: `EMP-POST-${String(challengeDay).padStart(4, '0')}`,
           projectDayId,
           challengeDay,
           platform: 'TIKTOK',
@@ -116,8 +116,9 @@ export class StoryRepository {
       }
     }
 
-    const day = await this.getOrCreateDay(1);
-    const post = await this.getOrCreateSocialPost(day.id, 1);
+    const dayNumBatch = Number(projectDayId.replace(/\D/g, '')) || 1;
+    const day = await this.getOrCreateDay(dayNumBatch);
+    const post = await this.getOrCreateSocialPost(day.id, dayNumBatch);
 
     try {
       await prisma.socialPost.update({
@@ -134,7 +135,7 @@ export class StoryRepository {
     for (const c of contributions) {
       try {
         const globalCode = c.global_comment_code || formatGlobalCommentCode(c.global_sequence || c.capture_sequence);
-        const dailyCode = c.daily_comment_code || formatDailyCommentCode(1, c.capture_sequence);
+        const dailyCode = c.daily_comment_code || formatDailyCommentCode(dayNumBatch, c.capture_sequence);
 
         const existingContrib = await prisma.contribution.findFirst({
           where: { internalId: c.internal_id || dailyCode },
@@ -276,7 +277,8 @@ export class StoryRepository {
     });
 
     if (!day) {
-      day = await this.getOrCreateDay(1);
+      const numFromId = Number(projectDayId.replace(/\D/g, '')) || 1;
+      day = await this.getOrCreateDay(numFromId);
     }
 
     const list = await prisma.contribution.findMany({
@@ -289,7 +291,7 @@ export class StoryRepository {
       id: c.id,
       project_day_id: c.projectDayId,
       participant_id: c.participantId,
-      social_post_id: c.socialPostId || 'EMP-POST-0001',
+      social_post_id: c.socialPostId || `EMP-POST-${String(Number(c.projectDayId.replace(/\D/g, '')) || 1).padStart(4, '0')}`,
       platform_comment_id: c.platformCommentId || `comment-${c.captureSequence}`,
       platform_comment_url: c.platformCommentUrl || (c.participant ? `https://www.tiktok.com/@${c.participant.username.replace(/^@/, '')}` : undefined),
       capture_sequence: c.captureSequence,
@@ -337,8 +339,9 @@ export class StoryRepository {
     invalidation_reason: string | null;
     sha256_hash: string;
   }) {
-    const day = await this.getOrCreateDay(1);
-    const post = await this.getOrCreateSocialPost(day.id, 1);
+    const dayNum = Number(data.project_day_id.replace(/\D/g, '')) || 1;
+    const day = await this.getOrCreateDay(dayNum);
+    const post = await this.getOrCreateSocialPost(day.id, dayNum);
 
     const c = await prisma.contribution.create({
       data: {
@@ -366,7 +369,7 @@ export class StoryRepository {
       id: c.id,
       project_day_id: c.projectDayId,
       participant_id: c.participantId,
-      social_post_id: c.socialPostId || 'EMP-POST-0001',
+      social_post_id: c.socialPostId || `EMP-POST-${String(dayNum).padStart(4, '0')}`,
       platform_comment_id: c.platformCommentId || `comment-${c.captureSequence}`,
       capture_sequence: c.captureSequence,
       daily_sequence_number: c.captureSequence,

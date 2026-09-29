@@ -167,7 +167,7 @@ export class CSVImporter implements CommentImporter {
 
       const contribution: Contribution = {
         id: `contrib_${projectDayId}_${currentDailySeq}`,
-        project_id: 'proj_emp_01',
+        project_id: projectDayId,
         project_day_id: projectDayId,
         social_post_id: socialPost?.id,
         global_comment_code: globalCommentCode,

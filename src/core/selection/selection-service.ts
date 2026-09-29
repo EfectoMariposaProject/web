@@ -95,11 +95,11 @@ export class SelectionService {
       const targetItem = contributionsMap.get(targetSequence);
       selectedContribution = targetItem || {
         id: `contrib_${projectDayId}_target_${targetSequence}`,
-        project_id: 'proj_emp_01',
+        project_id: projectDayId,
         project_day_id: projectDayId,
         global_comment_code: 'EMP-COM-000000',
-        daily_comment_code: `D01-C${String(targetSequence).padStart(4, '0')}`,
-        internal_id: `D01-C${String(targetSequence).padStart(4, '0')}`,
+        daily_comment_code: `D${String(Number(projectDayId.replace(/\D/g, '')) || 1).padStart(2, '0')}-C${String(targetSequence).padStart(4, '0')}`,
+        internal_id: `D${String(Number(projectDayId.replace(/\D/g, '')) || 1).padStart(2, '0')}-C${String(targetSequence).padStart(4, '0')}`,
         participant_id: 'sin_participante',
         author_handle: 'sin_participante',
         original_text: `No se encontró ningún comentario en la cadena +3 que cumpla con el rango obligatorio de 100 a 150 palabras para el objetivo #${targetSequence}.`,

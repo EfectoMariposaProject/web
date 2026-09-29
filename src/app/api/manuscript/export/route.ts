@@ -5,15 +5,23 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const format = searchParams.get('format') || 'markdown';
+    const projectDayId = searchParams.get('projectDayId');
 
     const repo = new StoryRepository();
     const days = await repo.getAllProjectDays();
-    const allContributions = await repo.getContributionsByDay('day-001');
+
+    // If a specific day is requested, export only that day; otherwise export all
+    const allContributions = projectDayId
+      ? await repo.getContributionsByDay(projectDayId)
+      : await Promise.all(days.map((d: any) => repo.getContributionsByDay(d.id))).then(arrs =>
+          (arrs as any[][]).flat()
+        );
 
     if (format === 'json') {
       const exportPackage = {
-        project: 'Efecto Mariposa Project - Novela Colaborativa de 365 Días',
+        project: 'Efecto Mariposa Project — Novela Colaborativa de 80 Jornadas',
         exported_at: new Date().toISOString(),
+        scope: projectDayId || 'todas las jornadas',
         total_days: days.length || 1,
         total_contributions: allContributions.length,
         evidence_chain: allContributions.map((c: any) => ({
@@ -37,16 +45,13 @@ export async function GET(req: NextRequest) {
 
     // Default: Markdown manuscript export
     let markdown = `# EFECTO MARIPOSA PROJECT\n\n`;
-    markdown += `*La Novela Colaborativa de 365 Días asistida por Inteligencia Artificial*\n\n`;
+    markdown += `*La Novela Colaborativa de 80 Jornadas asistida por Inteligencia Artificial*\n\n`;
     markdown += `---\n\n`;
-    markdown += `## CAPÍTULO 1: LA CASONA DE COYOACÁN\n\n`;
-    markdown += `La mansión de los Méndez permanecía en silencio bajo la penumbra del atardecer. Tras quince años de ausencia, Laura cruzó nuevamente el umbral de la casona familiar con una mochila al hombro y una sola certeza: la verdad sobre la muerte de su abuelo aún estaba encerrada entre aquellas cuatro paredes.\n\n`;
 
     allContributions.forEach((c: any) => {
       markdown += `> **[${c.global_comment_code} | ${c.daily_comment_code}]** — *@${c.participant_id}* (${c.word_count} palabras)\n`;
       markdown += `"${c.original_text}"\n\n`;
     });
-
 
     markdown += `---\n\n*Documento certificado por SHA-256 inmutable • EMP Story Engine*\n`;
 

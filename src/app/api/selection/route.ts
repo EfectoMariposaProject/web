@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     for (const c of dbContributions) {
       const domainContrib: Contribution = {
         id: c.id,
-        project_id: 'proj-001',
+        project_id: project_day_id,
         project_day_id: c.project_day_id,
         participant_id: c.participant_id,
         social_post_id: c.social_post_id,
@@ -103,7 +103,7 @@ export async function GET(req: NextRequest) {
     for (const c of dbContributions) {
       const domainContrib: Contribution = {
         id: c.id,
-        project_id: 'proj-001',
+        project_id: project_day_id,
         project_day_id: c.project_day_id,
         participant_id: c.participant_id,
         social_post_id: c.social_post_id,

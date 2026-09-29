@@ -118,7 +118,7 @@ export default function DailyProjectPage() {
       const res = await fetch('/api/tiktok/fetch-comments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ videoUrl: tiktokUrl, project_day_id: projectDayId, dayNumber: 1 }),
+        body: JSON.stringify({ videoUrl: tiktokUrl, project_day_id: projectDayId, dayNumber: challengeDay }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Error al obtener comentarios de TikTok');
@@ -207,7 +207,7 @@ export default function DailyProjectPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `comentarios_tiktok_dia_001_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('download', `comentarios_tiktok_${projectDayId}_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -217,8 +217,7 @@ export default function DailyProjectPage() {
     setIsExecuting(true);
     try {
       const selectionService = new SelectionService();
-      // projectDayId from URL param
-      const dayNumber = 1;
+      const dayNumber = challengeDay;
 
       const contributionsMap = new Map<number, Contribution>();
       const participantsMap = new Map<string, Participant>();
@@ -227,7 +226,7 @@ export default function DailyProjectPage() {
         const csvImporter = new CSVImporter();
         const rawComments = csvImporter.parseCSVString(csvInput);
         if (rawComments.length > 0) {
-          const batch = await csvImporter.importComments(rawComments, projectDayId, dayNumber, 1, 1, activePost);
+          const batch = await csvImporter.importComments(rawComments, projectDayId, dayNumber, weekNumber, challengeDay, activePost);
           
           await fetch('/api/contributions', {
             method: 'POST',
@@ -340,7 +339,7 @@ export default function DailyProjectPage() {
   useEffect(() => {
     const loadSavedContributions = async () => {
       try {
-        const res = await fetch('`/api/contributions?projectDayId=${projectDayId}`');
+        const res = await fetch(`/api/contributions?projectDayId=${projectDayId}`);
         const data = await res.json();
         if (data.success && Array.isArray(data.contributions) && data.contributions.length > 0) {
           const fetchedContribs: Contribution[] = data.contributions;
@@ -364,7 +363,7 @@ export default function DailyProjectPage() {
       }
     };
     loadSavedContributions();
-  }, [target1, target2, target3]);
+  }, [target1, target2, target3, projectDayId]);
 
   const selectedSlotsMap = useMemo(() => {
     const map = new Map<number, { slotNumber: number; replacementApplied: boolean; originalTarget: number }>();
@@ -452,7 +451,7 @@ export default function DailyProjectPage() {
           <Clock className="w-5 h-5 text-blue-700 shrink-0" />
           <div>
             <span className="text-[11px] font-bold text-blue-900 block">REGLA 3: POST OFICIAL</span>
-            <span className="text-[10px] text-slate-600 font-medium">EMP-POST-0001 Activo</span>
+            <span className="text-[10px] text-slate-600 font-medium">{postId} Activo</span>
           </div>
         </div>
 
@@ -469,9 +468,9 @@ export default function DailyProjectPage() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 pb-6">
         <div>
           <div className="flex items-center gap-2 text-blue-900 text-xs font-mono font-bold mb-1">
-            <span>PUBLICACIÓN DIARIA OFICIAL: EMP-POST-0001</span>
+            <span>PUBLICACIÓN DIARIA OFICIAL: {postId}</span>
             <span>•</span>
-            <span>JORNADA DÍA 001</span>
+            <span>{dayLabel}</span>
           </div>
           <h1 className="text-3xl font-serif font-bold text-slate-900 flex items-center gap-3">
             Publicación Diaria Activa
@@ -599,7 +598,7 @@ export default function DailyProjectPage() {
           />
 
           <div className="flex justify-between items-center text-xs text-slate-600 font-medium">
-            <span>Rango de palabras: <strong>100 a 150 palabras</strong>. Dual IDs: Global (EMP-COM-000001) y Diario (D01-C0001).</span>
+            <span>Rango de palabras: <strong>100 a 150 palabras</strong>. Dual IDs: Global (EMP-COM-XXXXXX) y Diario (D{String(challengeDay).padStart(2,'0')}-C0001).</span>
             <button
               onClick={handleExecuteEngine}
               className="text-blue-700 hover:text-blue-900 underline font-bold"
@@ -620,7 +619,7 @@ export default function DailyProjectPage() {
               <FileSpreadsheet className="w-5 h-5 text-blue-600" /> Grid Estilo Excel de Comentarios ({allContributions.length} Participaciones Capturadas)
             </h2>
             <p className="text-xs text-slate-600 font-medium">
-              Tabla de datos completa estructurada en columnas (<code className="font-bold text-blue-900">author, username, text, likes, replies, created_at, language, Valido</code>). Destaca automáticamente los comentarios que coinciden con los objetivos del día (#15, #38, #72) y permite seleccionar el texto directamente para los 3 Slots.
+              Tabla de datos completa estructurada en columnas (<code className="font-bold text-blue-900">author, username, text, likes, replies, created_at, language, Valido</code>). Destaca automáticamente los comentarios que coinciden con los objetivos del día (#{target1}, #{target2}, #{target3}) y permite seleccionar el texto directamente para los 3 Slots.
             </p>
           </div>
 
@@ -751,7 +750,7 @@ export default function DailyProjectPage() {
               <MessageSquare className="w-8 h-8 text-blue-600" />
             </div>
             <div className="space-y-1 max-w-md mx-auto">
-              <h3 className="text-lg font-bold text-slate-900">Simulacro Día 1 Listo — 0 Comentarios Registrados</h3>
+              <h3 className="text-lg font-bold text-slate-900">{dayLabel} — 0 Comentarios Registrados</h3>
               <p className="text-xs text-slate-600 leading-relaxed">
                 El sistema se encuentra en su estado inicial limpio sin datos hardcodeados. Haz clic en <strong>"Extraer Comentarios de TikTok"</strong> para iniciar la ingesta de la convocatoria en vivo o pega tu archivo CSV.
               </p>

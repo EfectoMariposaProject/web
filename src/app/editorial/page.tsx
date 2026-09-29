@@ -23,6 +23,11 @@ interface CandidateSlot {
 }
 
 export default function EditorialWorkbenchPage() {
+  const [selectedDay, setSelectedDay] = useState(1);
+  const projectDayId = `day-${String(selectedDay).padStart(3, '0')}`;
+  const weekNumber = Math.ceil(selectedDay / 5);
+  const dayLabel = `DÍA ${String(selectedDay).padStart(2, '0')} — SEMANA ${weekNumber}`;
+
   const [candidateSlots, setCandidateSlots] = useState<CandidateSlot[]>([]);
   const [activeSlotIndex, setActiveSlotIndex] = useState(0);
   const currentSlot = candidateSlots[activeSlotIndex] || null;
@@ -44,7 +49,7 @@ export default function EditorialWorkbenchPage() {
 
   const fetchSelectedSlots = async () => {
     try {
-      const res = await fetch('/api/selection?projectDayId=day-001');
+      const res = await fetch(`/api/selection?projectDayId=${projectDayId}`);
       const data = await res.json();
       if (data.success && Array.isArray(data.results) && data.results.length > 0) {
         const slots: CandidateSlot[] = data.results.map((r: any) => {
@@ -54,7 +59,7 @@ export default function EditorialWorkbenchPage() {
             id: contrib.id,
             slotNumber: r.slotRule.slot_number,
             globalCode: contrib.global_comment_code || `EMP-COM-${String(contrib.capture_sequence).padStart(6, '0')}`,
-            dailyCode: contrib.daily_comment_code || `D01-C${String(contrib.capture_sequence).padStart(4, '0')}`,
+            dailyCode: contrib.daily_comment_code || `D${String(selectedDay).padStart(2, '0')}-C${String(contrib.capture_sequence).padStart(4, '0')}`,
             username: author.replace(/^@/, ''),
             wordCount: contrib.word_count,
             originalText: contrib.original_text,
@@ -78,8 +83,11 @@ export default function EditorialWorkbenchPage() {
   };
 
   useEffect(() => {
+    setCandidateSlots([]);
+    setActiveSlotIndex(0);
     fetchSelectedSlots();
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDay]);
 
   const handleSelectSlot = (index: number) => {
     setActiveSlotIndex(index);
@@ -182,6 +190,22 @@ export default function EditorialWorkbenchPage() {
             <span>{showBibleDrawer ? 'Ocultar Biblia de Novela' : 'Ver Biblia de Novela'}</span>
           </button>
 
+          {/* Day Selector */}
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-bold text-slate-600 font-mono">JORNADA:</label>
+            <select
+              value={selectedDay}
+              onChange={(e) => setSelectedDay(Number(e.target.value))}
+              className="bg-white border border-blue-300 text-blue-900 text-xs font-bold rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-blue-500 shadow-2xs cursor-pointer"
+            >
+              {Array.from({ length: 80 }, (_, i) => i + 1).map((d) => (
+                <option key={d} value={d}>
+                  DÍA {String(d).padStart(2, '0')} — SEM {Math.ceil(d / 5)}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <button
             onClick={() => handleGenerateAI()}
             disabled={isGeneratingAI || !currentSlot}
@@ -215,7 +239,7 @@ export default function EditorialWorkbenchPage() {
           </div>
         </div>
         <div className="text-xs font-mono font-bold text-blue-900 bg-white px-3 py-1 rounded-lg border border-blue-200">
-          ESTADO: JORNADA 001 ACTIVA
+          ESTADO: {dayLabel} ACTIVA
         </div>
       </div>
 
@@ -283,18 +307,18 @@ export default function EditorialWorkbenchPage() {
             <Feather className="w-8 h-8 text-blue-600" />
           </div>
           <div className="space-y-1 max-w-md mx-auto">
-            <h3 className="text-lg font-bold text-slate-900">Workbench Editorial Limpio — Día 1</h3>
+            <h3 className="text-lg font-bold text-slate-900">Workbench Editorial Limpio — {dayLabel}</h3>
             <p className="text-xs text-slate-600 leading-relaxed">
               No hay slots seleccionados para curaduría aún. Ingresa a <strong>"Jornada Diaria"</strong> para extraer comentarios de TikTok y ejecutar el motor de slots.
             </p>
           </div>
           <div className="pt-2">
             <Link
-              href="/project/day/1"
+              href={`/project/day/${selectedDay}`}
               className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl font-bold text-xs hover:bg-blue-700 transition-all shadow-md"
             >
               <Sparkles className="w-4 h-4" />
-              <span>Ir a Jornada Diaria (Día 1)</span>
+              <span>Ir a Jornada Diaria ({dayLabel})</span>
             </Link>
           </div>
         </div>
@@ -328,7 +352,7 @@ export default function EditorialWorkbenchPage() {
                 {/* Apertura del Día */}
                 <div className="space-y-2">
                   <span className="text-[10px] font-mono uppercase text-slate-400 block font-bold tracking-wider">
-                    PARÁGRAFO DE APERTURA OFICIAL (DÍA 001):
+                    PARÁGRAFO DE APERTURA OFICIAL ({dayLabel}):
                   </span>
                   <p className="text-slate-800 text-sm leading-relaxed italic bg-amber-50/50 p-4 rounded-xl border border-amber-200/70">
                     "{openingText}"
