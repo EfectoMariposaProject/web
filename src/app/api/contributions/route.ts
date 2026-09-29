@@ -87,11 +87,19 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const project_day_id = searchParams.get('projectDayId') || 'day-001';
+    const isSummary = searchParams.get('summary') === 'true';
     const repo = new StoryRepository();
+
+    if (isSummary) {
+      const summary = await repo.getContributionsSummaryByDay(project_day_id);
+      return NextResponse.json({ success: true, summary });
+    }
+
     const list = await repo.getContributionsByDay(project_day_id);
     return NextResponse.json({ success: true, contributions: list });
   } catch (error: any) {
-    return NextResponse.json({ success: false, contributions: [] });
+    return NextResponse.json({ success: false, contributions: [], error: error.message });
   }
 }
+
 

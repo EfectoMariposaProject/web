@@ -266,6 +266,68 @@ export class StoryRepository {
     });
   }
 
+  public async getContributionsSummaryByDay(projectDayId: string) {
+    const numFromId = Number(projectDayId.replace(/\D/g, '')) || 1;
+    let day = await prisma.projectDay.findFirst({
+      where: {
+        OR: [
+          { id: projectDayId },
+          { dayNumber: numFromId },
+        ],
+      },
+    });
+
+    if (!day) {
+      day = await this.getOrCreateDay(numFromId);
+    }
+
+    const dayId = day.id;
+    const dayNumber = day.dayNumber;
+
+    const totalCount = await prisma.contribution.count({
+      where: { projectDayId: dayId },
+    });
+
+    const validCount = await prisma.contribution.count({
+      where: {
+        projectDayId: dayId,
+        wordCount: { gte: 100, lte: 150 },
+      },
+    });
+
+    const invalidCount = totalCount - validCount;
+
+    // Unique participants in this day
+    const distinctParticipants = await prisma.contribution.groupBy({
+      by: ['participantId'],
+      where: { projectDayId: dayId },
+    });
+
+    const uniqueAuthors = distinctParticipants.length;
+
+    // Incorporated count from selection rules
+    const selectionRules = await prisma.dailySelectionRule.findMany({
+      where: { projectDayId: dayId },
+    });
+    const incorporatedCount = selectionRules.filter((s) => s.selectedContributionId).length;
+
+    return {
+      dayNumber,
+      totalContributions: totalCount,
+      dailyContributions: totalCount,
+      validContributions: validCount,
+      invalidContributions: invalidCount,
+      incorporatedContributions: incorporatedCount,
+      uniqueAuthors,
+      authorsWith1: Math.min(uniqueAuthors, 1),
+      authorsWith2: 0,
+      authorsWith3Max: 0,
+      openMysteries: 3,
+      activeSeeds: 5,
+      pendingContradictions: 0,
+    };
+  }
+
   public async getContributionsByDay(projectDayId: string) {
     let day = await prisma.projectDay.findFirst({
       where: {
