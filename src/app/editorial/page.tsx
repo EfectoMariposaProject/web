@@ -236,7 +236,7 @@ export default function EditorialWorkbenchPage() {
 
               return (
                 <button
-                  key={s.globalCode}
+                  key={`slot-tab-${s.slotNumber}-${idx}`}
                   onClick={() => handleSelectSlot(idx)}
                   className={`flex flex-col p-3.5 rounded-xl border text-left transition-all ${
                     isActive
@@ -343,7 +343,7 @@ export default function EditorialWorkbenchPage() {
 
                     return (
                       <div
-                        key={slot.globalCode}
+                        key={`slot-card-${slot.slotNumber}-${idx}`}
                         onClick={() => handleSelectSlot(idx)}
                         className={`p-4 rounded-2xl border-2 transition-all cursor-pointer relative ${
                           isSelectedSlot
