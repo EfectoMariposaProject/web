@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { GitBranch, Sparkles, AlertCircle, ArrowRight } from 'lucide-react';
+import { GitBranch, Sparkles, ArrowRight } from 'lucide-react';
 
 export interface TreeNode {
   id: string;

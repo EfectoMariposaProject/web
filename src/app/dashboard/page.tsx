@@ -38,7 +38,7 @@ export default function DashboardPage() {
               EFECTO MARIPOSA <span className="gold-gradient-text">PROJECT</span>
             </h1>
             <p className="text-slate-600 text-sm mt-1 max-w-xl">
-              Plataforma de gestión y control de la novela colaborativa construida en 365 días (Mín 69, Máx 96 palabras).
+              Plataforma de gestión y control de la novela colaborativa construida en 4 meses (Mín 100, Máx 150 palabras).
             </p>
           </div>
 

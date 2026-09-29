@@ -239,7 +239,7 @@ Elena se aproximó. La Polaroid de 1987 capturaba la misma fachada, pero solo mo
       continue;
     }
 
-    let enhanced = line
+    const enhanced = line
       .replace(/\blave tardó tres intentos en entrar\./gi, 'cerradura ofreció resistencia y requirió tres intentos forzados antes de ceder.')
       .replace(/\bElena pensó que probablemente la cerradura se había oxidado\b/gi, 'Elena atribuyó la rigidez del cerrojo al óxido acumulado por los años')
       .replace(/\bno consiguió evitarle aquella sensación absurda\b/gi, 'no disipó la inquietante corazonada de que la estructura misma rechazaba su regreso')

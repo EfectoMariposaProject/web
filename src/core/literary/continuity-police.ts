@@ -47,7 +47,7 @@ export function auditContinuity(originalText: string, editedText: string): Conti
 /**
  * Repara violaciones manteniendo la propuesta editada siempre que contenga texto válido.
  */
-export function repairContinuity(originalText: string, editedText: string, violations: ContinuityViolation[]): string {
+export function repairContinuity(originalText: string, editedText: string, _violations: ContinuityViolation[]): string {
   if (!editedText || editedText.trim().length < 20) {
     return originalText;
   }

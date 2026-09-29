@@ -102,7 +102,7 @@ export class SelectionService {
         internal_id: `D01-C${String(targetSequence).padStart(4, '0')}`,
         participant_id: 'sin_participante',
         author_handle: 'sin_participante',
-        original_text: `No se encontró ningún comentario en la cadena +3 que cumpla con el rango obligatorio de 69 a 96 palabras para el objetivo #${targetSequence}.`,
+        original_text: `No se encontró ningún comentario en la cadena +3 que cumpla con el rango obligatorio de 100 a 150 palabras para el objetivo #${targetSequence}.`,
         original_hash: '',
         normalized_text: '',
         word_count: 0,
@@ -113,13 +113,13 @@ export class SelectionService {
         late_comment: false,
         status: 'INVALID',
         validation_status: 'INVALID',
-        validation_reasons: ['Sin candidato válido (69-96 palabras) en cadena +3'],
+        validation_reasons: ['Sin candidato válido (100-150 palabras) en cadena +3'],
         selected_by_rule: false,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
       replacementApplied = true;
-      finalReason = `Sin comentarios en el rango 69-96 palabras en la secuencia +3 desde objetivo #${targetSequence}`;
+      finalReason = `Sin comentarios en el rango 100-150 palabras en la secuencia +3 desde objetivo #${targetSequence}`;
     }
 
     // Update contribution status to SELECTED

@@ -4,10 +4,10 @@ import { useState } from 'react';
 import { Settings, Save, Cpu, Database, Check } from 'lucide-react';
 
 export default function SettingsPage() {
-  const [dailyWordMin, setDailyWordMin] = useState(69);
-  const [dailyWordMax, setDailyWordMax] = useState(96);
+  const [dailyWordMin, setDailyWordMin] = useState(100);
+  const [dailyWordMax, setDailyWordMax] = useState(150);
   const [maxSelectedPerUser, setMaxSelectedPerUser] = useState(3);
-  const [aiProvider, setAiProvider] = useState('Gemini');
+  const [aiProvider, setAiProvider] = useState('OpenAI (GPT-4o)');
   const [dbProvider] = useState('SQLite Local (Prisma)');
   const [isSaved, setIsSaved] = useState(false);
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { History, ShieldCheck, Lock, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { History, ShieldCheck, Lock, RefreshCw } from 'lucide-react';
 
 export default function AuditPage() {
   const [isMounted, setIsMounted] = useState(false);

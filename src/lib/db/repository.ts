@@ -1,5 +1,5 @@
 import { prisma } from './prisma';
-import { Contribution, Participant, ProjectDay, DailySelectionRule, SelectionAuditLog } from '@/types/domain.types';
+import { Contribution, Participant, DailySelectionRule, SelectionAuditLog } from '@/types/domain.types';
 import { formatGlobalCommentCode, formatDailyCommentCode } from '@/core/audit/hasher';
 
 export class StoryRepository {

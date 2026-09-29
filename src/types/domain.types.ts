@@ -11,6 +11,19 @@ import {
   ContinuityIssueSeverity,
 } from './enums';
 
+export {
+  UserRole,
+  ProjectDayStatus,
+  SocialPostStatus,
+  Platform,
+  ContributionStatus,
+  DetailedContributionStatus,
+  CharacterStatus,
+  MysteryStatus,
+  NarrativeSeedStatus,
+  ContinuityIssueSeverity,
+};
+
 export interface Project {
   id: string;
   name: string;

@@ -5,24 +5,17 @@ import { LiteraryAnalyzer } from '@/core/literary/literary-analyzer';
 import { LiteraryAnalysisResult } from '@/core/literary/literary-types';
 import {
   Sparkles,
-  BookOpen,
   Users,
   Clock,
   Zap,
   Copy,
   Check,
   Brain,
-  Shield,
   Layers,
-  ArrowRight,
   TrendingUp,
-  Sliders,
   Target,
-  FileText,
   RefreshCw,
-  Video,
   Flame,
-  Hash,
 } from 'lucide-react';
 
 export default function LiteraryLabPage() {

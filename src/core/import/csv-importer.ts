@@ -2,7 +2,7 @@ import { CommentImporter, RawImportedComment, ImportBatchResult } from './import
 import { ContributionValidator } from '../validation/contribution-validator';
 import { generateSHA256, formatGlobalCommentCode, formatDailyCommentCode } from '../audit/hasher';
 import { Contribution, Participant, SocialPost } from '@/types/domain.types';
-import { ContributionStatus, DetailedContributionStatus, Platform } from '@/types/enums';
+import { DetailedContributionStatus, Platform } from '@/types/enums';
 
 export class CSVImporter implements CommentImporter {
   private validator: ContributionValidator;
@@ -18,7 +18,7 @@ export class CSVImporter implements CommentImporter {
     const firstLine = lines[0].toLowerCase();
     const hasHeader = firstLine.includes('username') || firstLine.includes('text') || firstLine.includes('author');
 
-    let colIndices = {
+    const colIndices = {
       platform_comment_id: -1,
       author: -1,
       username: -1,

@@ -4,8 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { 
   Feather, Check, Sparkles, ShieldCheck, RefreshCw, BookOpen, Users, MapPin, 
-  Sparkle, Eye, ChevronRight, FileText, Bookmark, ArrowRight, UserCheck, Shield,
-  Layers, ChevronDown, ChevronUp, Copy, CheckCircle2
+  UserCheck, Shield, Layers, Copy, CheckCircle2
 } from 'lucide-react';
 import { MockAIProvider } from '@/lib/ai/mock-ai-provider';
 
@@ -32,7 +31,7 @@ export default function EditorialWorkbenchPage() {
   const [editorialVersion, setEditorialVersion] = useState('');
   const [essencePreserved, setEssencePreserved] = useState(true);
   const [editionType, setEditionType] = useState('Integración narrativa');
-  const [openingText, setOpeningText] = useState('Hoy define qué miedo persigue al protagonista.');
+  const [openingText, _setOpeningText] = useState('Hoy define qué miedo persigue al protagonista.');
   const [justification, setJustification] = useState('');
 
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
@@ -212,7 +211,7 @@ export default function EditorialWorkbenchPage() {
         <div className="flex items-center gap-2">
           <ShieldCheck className="w-5 h-5 text-blue-700 shrink-0" />
           <div className="text-xs text-blue-950 font-medium">
-            <span className="font-bold text-blue-900">Regla Fundamental:</span> Preservación de Esencia 100% • Rango obligatorio: <strong>69 a 96 palabras</strong>.
+            <span className="font-bold text-blue-900">Regla Fundamental:</span> Preservación de Esencia 100% • Rango obligatorio: <strong>100 a 150 palabras</strong>.
           </div>
         </div>
         <div className="text-xs font-mono font-bold text-blue-900 bg-white px-3 py-1 rounded-lg border border-blue-200">

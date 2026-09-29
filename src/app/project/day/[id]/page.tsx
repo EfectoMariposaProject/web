@@ -166,7 +166,7 @@ export default function DailyProjectPage() {
     const headers = ['secuencia', 'author', 'username', 'text', 'likes', 'replies', 'created_at', 'language', 'Valido', 'id_diario', 'id_global'];
 
     const rows = allContributions.map((c) => {
-      const isValid = c.word_count >= 69 && c.word_count <= 96 ? 'Si' : 'No';
+      const isValid = c.word_count >= 100 && c.word_count <= 150 ? 'Si' : 'No';
       const authorName = c.author_name || c.author_handle || 'N/A';
       const username = c.author_handle || c.participant_id || 'N/A';
       const text = (c.original_text || '').replace(/"/g, '""');
@@ -210,8 +210,8 @@ export default function DailyProjectPage() {
       const projectDayId = 'day-001';
       const dayNumber = 1;
 
-      let contributionsMap = new Map<number, Contribution>();
-      let participantsMap = new Map<string, Participant>();
+      const contributionsMap = new Map<number, Contribution>();
+      const participantsMap = new Map<string, Participant>();
 
       if (csvInput.trim()) {
         const csvImporter = new CSVImporter();
@@ -589,7 +589,7 @@ export default function DailyProjectPage() {
           />
 
           <div className="flex justify-between items-center text-xs text-slate-600 font-medium">
-            <span>Rango de palabras: <strong>69 a 96 palabras</strong>. Dual IDs: Global (EMP-COM-000001) y Diario (D01-C0001).</span>
+            <span>Rango de palabras: <strong>100 a 150 palabras</strong>. Dual IDs: Global (EMP-COM-000001) y Diario (D01-C0001).</span>
             <button
               onClick={handleExecuteEngine}
               className="text-blue-700 hover:text-blue-900 underline font-bold"
@@ -994,7 +994,7 @@ export default function DailyProjectPage() {
                   <div className="pt-3 border-t border-slate-200 space-y-2">
                     <div className="flex items-center justify-between text-[11px] font-mono font-bold">
                       <span className={isValid ? 'text-emerald-700' : 'text-rose-700'}>
-                        {contrib.word_count} palabras {isValid ? '(En Rango 69-96)' : (contrib.word_count < 69 ? `(Faltan ${69 - contrib.word_count})` : `(Excede por ${contrib.word_count - 96})`)}
+                        {contrib.word_count} palabras {isValid ? '(En Rango 100-150)' : (contrib.word_count < 100 ? `(Faltan ${100 - contrib.word_count})` : `(Excede por ${contrib.word_count - 150})`)}
                       </span>
                       <span className="text-slate-500 text-[10px]">✓ +18 Años</span>
                     </div>
@@ -1171,7 +1171,7 @@ export default function DailyProjectPage() {
               </div>
               <div className="flex items-center gap-2 text-slate-700">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                <span>Validando métrica (69-96 palabras) y +18 años...</span>
+                <span>Validando métrica (100-150 palabras) y +18 años...</span>
               </div>
               <div className="flex items-center gap-2 text-slate-700">
                 <Hash className="w-3.5 h-3.5 text-indigo-600 shrink-0" />

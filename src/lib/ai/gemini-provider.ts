@@ -79,7 +79,7 @@ Devuelve únicamente un JSON con este formato:
 
   public async analyzeContinuity(
     originalText: string,
-    storyContext?: string
+    _storyContext?: string
   ): Promise<ContinuityAnalysisResult> {
     return {
       valid: true,
