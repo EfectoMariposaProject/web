@@ -14,6 +14,7 @@ import {
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEmpCache } from '@/lib/cache/CacheProvider';
+import { TikTokBackgroundJobWidget, ImportJobState } from '@/components/tiktok/TikTokBackgroundJobWidget';
 
 export default function DailyProjectPage() {
   const params = useParams();
@@ -36,6 +37,7 @@ export default function DailyProjectPage() {
 
   const [tiktokUrl, setTiktokUrl] = useState('');
   const [isFetchingTikTok, setIsFetchingTikTok] = useState(false);
+  const [activeJobId, setActiveJobId] = useState<string | null>(null);
 
 
   // Initialized empty for current day simulation
@@ -121,17 +123,37 @@ export default function DailyProjectPage() {
     setShowOverwriteModal(false);
     setIsFetchingTikTok(true);
     try {
-      const res = await fetch('/api/tiktok/fetch-comments', {
+      const res = await fetch('/api/tiktok/jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ videoUrl: tiktokUrl, project_day_id: projectDayId, dayNumber: challengeDay }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Error al obtener comentarios de TikTok');
+      if (!res.ok) throw new Error(data.error || 'Error al programar la descarga de comentarios');
 
-      if (data.importedBatch && data.importedBatch.contributions && data.importedBatch.contributions.length > 0) {
-        const fetchedContribs: Contribution[] = data.importedBatch.contributions;
-        const fetchedParticipants: Participant[] = data.importedBatch.participants;
+      if (data.job?.id) {
+        setActiveJobId(data.job.id);
+        showCustomNotification(
+          'INFO',
+          'Extracción en Segundo Plano Iniciada',
+          'La descarga y archivado de comentarios se está procesando en el servidor. Puedes cambiar de página sin interrumpir el proceso.'
+        );
+      }
+    } catch (err: any) {
+      showCustomNotification('ERROR', 'Error al Iniciar Extracción', err.message);
+    } finally {
+      setIsFetchingTikTok(false);
+    }
+  };
+
+  const handleJobCompleted = async (completedJob: ImportJobState) => {
+    invalidateDay(projectDayId);
+    try {
+      const res = await fetch(`/api/contributions?projectDayId=${projectDayId}&_t=${Date.now()}`);
+      const data = await res.json();
+      if (data.success && Array.isArray(data.contributions) && data.contributions.length > 0) {
+        const fetchedContribs: Contribution[] = data.contributions;
+        const fetchedParticipants: Participant[] = data.participants || [];
 
         const contributionsMap = new Map<number, Contribution>();
         const participantsMap = new Map<string, Participant>();
@@ -142,7 +164,6 @@ export default function DailyProjectPage() {
         });
 
         const selectionService = new SelectionService();
-        // projectDayId from URL param
         const total = fetchedContribs.length;
 
         const res1 = selectionService.resolveSlotSelection(1, target1, contributionsMap, participantsMap, projectDayId, total);
@@ -151,30 +172,20 @@ export default function DailyProjectPage() {
 
         setSlotResults([res1, res2, res3]);
         setAllContributions(fetchedContribs);
-        setSearchQuery(''); // Clear search filter to show all fetched comments immediately
+        setSearchQuery('');
         setCurrentPage(1);
 
-        // Invalidate day cache so all other views fetch the fresh contributions
-        invalidateDay(projectDayId);
-
         showCustomNotification(
           'SUCCESS',
-          '¡Fotografía de Descarga Guardada!',
-          `Se capturó y archivó exitosamente la fotografía de ${data.totalFetched} comentarios de TikTok para la jornada (${dayLabel}).`
-        );
-      } else {
-        showCustomNotification(
-          'SUCCESS',
-          '¡Descarga Completada!',
-          `Se obtuvieron exitosamente ${data.totalFetched} comentarios de TikTok.`
+          '¡Descarga en Segundo Plano Finalizada!',
+          `Se procesaron y archivaron exitosamente ${completedJob.totalSaved} comentarios de TikTok para la jornada (${dayLabel}).`
         );
       }
     } catch (err: any) {
-      showCustomNotification('ERROR', 'Error de Extracción TikTok', err.message);
-    } finally {
-      setIsFetchingTikTok(false);
+      console.warn('Error al recargar contribuciones tras completar job:', err);
     }
   };
+
 
   const handleDownloadExcelCSV = () => {
     if (allContributions.length === 0) {
@@ -185,7 +196,7 @@ export default function DailyProjectPage() {
     const headers = ['secuencia', 'author', 'username', 'text', 'likes', 'replies', 'created_at', 'language', 'Valido', 'id_diario', 'id_global'];
 
     const rows = allContributions.map((c) => {
-      const isValid = c.word_count >= 100 && c.word_count <= 150 ? 'Si' : 'No';
+      const isValid = c.validation_status === 'VALID' ? 'Si' : 'No';
       const authorName = c.author_name || c.author_handle || 'N/A';
       const username = c.author_handle || c.participant_id || 'N/A';
       const text = (c.original_text || '').replace(/"/g, '""');
@@ -465,8 +476,8 @@ export default function DailyProjectPage() {
         <div className="glass-panel p-3.5 rounded-xl border border-blue-300 bg-blue-50/50 flex items-center gap-3 shadow-xs">
           <Hash className="w-5 h-5 text-blue-700 shrink-0" />
           <div>
-            <span className="text-[11px] font-bold text-blue-900 block">REGLA 2: RANGO 69 - 96 PALABRAS</span>
-            <span className="text-[10px] text-slate-600 font-medium">Margen flexible (Mín 69, Máx 96)</span>
+            <span className="text-[11px] font-bold text-blue-900 block">REGLA 2: RANGO 100 - 150 PALABRAS</span>
+            <span className="text-[10px] text-slate-600 font-medium">Margen estricto (Mín 100, Máx 150)</span>
           </div>
         </div>
 
@@ -537,6 +548,13 @@ export default function DailyProjectPage() {
         </div>
       </div>
 
+      {/* Background TikTok Job Tracking Widget */}
+      <TikTokBackgroundJobWidget
+        projectDayId={projectDayId}
+        currentJobId={activeJobId}
+        onJobComplete={handleJobCompleted}
+      />
+
       {/* Target IDs Config & CSV Importer Panel */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="glass-panel p-6 rounded-2xl border border-slate-200 bg-white shadow-xs space-y-4">
@@ -593,7 +611,7 @@ export default function DailyProjectPage() {
                 type="text"
                 value={tiktokUrl}
                 onChange={(e) => setTiktokUrl(e.target.value)}
-                placeholder="https://www.tiktok.com/@usuario/video/123456789"
+                placeholder="https://www.tiktok.com/@usuario/video/... o /photo/... o vt.tiktok.com/..."
                 className="flex-1 bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono text-slate-900 focus:border-blue-500 outline-none shadow-2xs"
               />
               <button
@@ -606,13 +624,13 @@ export default function DailyProjectPage() {
               </button>
             </div>
             <p className="text-[11px] text-slate-600 font-medium">
-              Formato de campos mapeados: <code className="text-blue-900 font-bold">author, username, text, likes, replies, created_at, language</code>.
+              Soporta cualquier publicación de TikTok (videos, fotos/carruseles y enlaces móviles cortos).
             </p>
           </div>
 
           <div className="flex justify-between items-center">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-blue-900 flex items-center gap-2 font-mono">
-              <Upload className="w-4 h-4 text-blue-600" /> O Pega CSV de Comentarios (Mín 69 - Máx 96 Palabras)
+              <Upload className="w-4 h-4 text-blue-600" /> O Pega CSV de Comentarios (Mín 100 - Máx 150 Palabras)
             </h2>
             <span className="text-xs text-slate-500 font-mono font-bold">{allContributions.length} participaciones capturadas</span>
           </div>
@@ -827,7 +845,7 @@ export default function DailyProjectPage() {
                   {paginatedContributions.map((contrib) => {
                     const targetSlotNumber = initialTargetsMap.get(contrib.capture_sequence);
                     const selectedInfo = selectedSlotsMap.get(contrib.capture_sequence);
-                    const isValid = contrib.word_count >= 69 && contrib.word_count <= 96;
+                    const isValid = contrib.validation_status === 'VALID';
                     const isTarget = targetSlotNumber !== undefined;
                     const isSelected = !!selectedInfo;
 
@@ -943,7 +961,7 @@ export default function DailyProjectPage() {
             {paginatedContributions.map((contrib) => {
               const selectedInfo = selectedSlotsMap.get(contrib.capture_sequence);
               const targetSlotNumber = initialTargetsMap.get(contrib.capture_sequence);
-              const isValid = contrib.word_count >= 69 && contrib.word_count <= 96;
+              const isValid = contrib.validation_status === 'VALID';
               const isSelected = !!selectedInfo;
               const isTarget = targetSlotNumber !== undefined;
 

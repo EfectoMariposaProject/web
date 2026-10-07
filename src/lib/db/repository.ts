@@ -76,40 +76,39 @@ export class StoryRepository {
     contributions: Contribution[],
     participants: Participant[]
   ) {
+    const participantIdMap = new Map<string, string>();
+
     for (const p of participants) {
       try {
-        const existing = await prisma.participant.findFirst({
+        const upserted = await prisma.participant.upsert({
           where: {
-            platform: p.platform,
+            platform_platformUserId: {
+              platform: p.platform || 'TIKTOK',
+              platformUserId: p.platform_user_id,
+            },
+          },
+          update: {
+            username: p.username,
+            displayName: p.display_name,
+            profileUrl: p.profile_url,
+            avatarUrl: p.avatar_url,
+          },
+          create: {
+            id: p.id || `part_${p.platform_user_id.toLowerCase()}`,
+            platform: p.platform || 'TIKTOK',
             platformUserId: p.platform_user_id,
+            username: p.username,
+            displayName: p.display_name,
+            profileUrl: p.profile_url,
+            avatarUrl: p.avatar_url,
+            selectedCount: p.selected_count || 0,
+            declared18Plus: p.declared_18_plus ?? true,
+            termsAccepted: p.terms_accepted ?? true,
           },
         });
-
-        if (existing) {
-          await prisma.participant.update({
-            where: { id: existing.id },
-            data: {
-              username: p.username,
-              displayName: p.display_name,
-              profileUrl: p.profile_url,
-              avatarUrl: p.avatar_url,
-            },
-          });
-        } else {
-          await prisma.participant.create({
-            data: {
-              id: p.id,
-              platform: p.platform,
-              platformUserId: p.platform_user_id,
-              username: p.username,
-              displayName: p.display_name,
-              profileUrl: p.profile_url,
-              avatarUrl: p.avatar_url,
-              selectedCount: p.selected_count,
-              declared18Plus: p.declared_18_plus ?? true,
-              termsAccepted: p.terms_accepted ?? true,
-            },
-          });
+        participantIdMap.set(p.platform_user_id.toLowerCase(), upserted.id);
+        if (p.username) {
+          participantIdMap.set(p.username.toLowerCase(), upserted.id);
         }
       } catch (pErr: any) {
         console.warn(`Advertencia al guardar participante ${p.username}:`, pErr.message);
@@ -132,19 +131,35 @@ export class StoryRepository {
       console.warn('Advertencia al actualizar SocialPost:', postErr.message);
     }
 
+    // Determine baseline global sequence offset
+    const maxGlobalAgg = await prisma.contribution.aggregate({
+      _max: { globalSequence: true },
+      where: { projectDayId: { not: day.id } },
+    });
+    let runningGlobalSeq = (maxGlobalAgg._max.globalSequence || 0) + 1;
+
     for (const c of contributions) {
       try {
-        const globalCode = c.global_comment_code || formatGlobalCommentCode(c.global_sequence || c.capture_sequence);
-        const dailyCode = c.daily_comment_code || formatDailyCommentCode(dayNumBatch, c.capture_sequence);
+        const assignedGlobalSeq = c.global_sequence && c.global_sequence > (maxGlobalAgg._max.globalSequence || 0)
+          ? c.global_sequence
+          : runningGlobalSeq++;
+
+        const globalCode = formatGlobalCommentCode(assignedGlobalSeq);
+        const dailyCode = formatDailyCommentCode(dayNumBatch, c.capture_sequence);
+        const uniqueInternalId = `D${String(dayNumBatch).padStart(2, '0')}-C${String(c.capture_sequence).padStart(4, '0')}`;
+
+        const participantKey = (c.participant_id || '').replace(/^part_/, '').toLowerCase();
+        const actualParticipantId = participantIdMap.get(participantKey) || c.participant_id;
 
         const existingContrib = await prisma.contribution.findFirst({
-          where: { internalId: c.internal_id || dailyCode },
+          where: { internalId: uniqueInternalId },
         });
 
         if (existingContrib) {
           await prisma.contribution.update({
             where: { id: existingContrib.id },
             data: {
+              participantId: actualParticipantId,
               originalText: c.original_text,
               wordCount: c.word_count,
               status: c.status,
@@ -156,20 +171,20 @@ export class StoryRepository {
         } else {
           await prisma.contribution.create({
             data: {
-              id: c.id,
+              id: `contrib_${day.id}_${c.capture_sequence}_${Date.now()}`,
               projectId: day.projectId,
               projectDayId: day.id,
               socialPostId: post.id,
               globalCommentCode: globalCode,
               dailyCommentCode: dailyCode,
-              internalId: c.internal_id || dailyCode,
-              participantId: c.participant_id,
+              internalId: uniqueInternalId,
+              participantId: actualParticipantId,
               originalText: c.original_text,
               originalHash: c.original_hash || '',
               normalizedText: c.normalized_text,
               wordCount: c.word_count,
               captureSequence: c.capture_sequence,
-              globalSequence: c.global_sequence || c.capture_sequence,
+              globalSequence: assignedGlobalSeq,
               receivedAt: c.received_at ? new Date(c.received_at) : new Date(),
               ageDeclarationStatus: c.age_declaration_status || 'declared_18_plus',
               termsAccepted: c.terms_accepted ?? true,
@@ -265,6 +280,26 @@ export class StoryRepository {
       },
     });
   }
+
+  public async getAllParticipants(): Promise<Participant[]> {
+    const list = await prisma.participant.findMany();
+    return list.map((p) => ({
+      id: p.id,
+      platform: p.platform as any,
+      platform_user_id: p.platformUserId,
+      username: p.username,
+      display_name: p.displayName || undefined,
+      avatar_url: p.avatarUrl || undefined,
+      profile_url: p.profileUrl || undefined,
+      selected_count: p.selectedCount,
+      is_blocked: p.isBlocked,
+      declared_18_plus: p.declared18Plus,
+      terms_accepted: p.termsAccepted,
+      created_at: p.createdAt.toISOString(),
+      updated_at: p.updatedAt.toISOString(),
+    }));
+  }
+
 
   public async getContributionsSummaryByDay(projectDayId: string) {
     const numFromId = Number(projectDayId.replace(/\D/g, '')) || 1;

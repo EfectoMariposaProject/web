@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { CSVImporter } from '@/core/import/csv-importer';
 import { StoryRepository } from '@/lib/db/repository';
+import { extractTikTokPostId } from '@/lib/tiktok/url-helper';
 
 export async function POST(req: NextRequest) {
   try {
@@ -8,14 +9,13 @@ export async function POST(req: NextRequest) {
     const { videoUrl, project_day_id = 'day-001', dayNumber = 1 } = body;
 
     if (!videoUrl) {
-      return NextResponse.json({ error: 'Se requiere la URL del video de TikTok (videoUrl).' }, { status: 400 });
+      return NextResponse.json({ error: 'Se requiere la URL de la publicación de TikTok (videoUrl).' }, { status: 400 });
     }
 
-    const videoIdMatch = videoUrl.match(/\/video\/(\d+)/);
-    const videoId = videoIdMatch ? videoIdMatch[1] : null;
+    const { postId: videoId } = await extractTikTokPostId(videoUrl);
 
     if (!videoId) {
-      return NextResponse.json({ error: 'No se pudo extraer aweme_id de la URL de TikTok proporcionada.' }, { status: 400 });
+      return NextResponse.json({ error: 'No se pudo extraer el ID de la publicación de TikTok (aweme_id / photo_id / item_id).' }, { status: 400 });
     }
 
     const headers = {

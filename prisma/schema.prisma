@@ -273,3 +273,21 @@ model ManuscriptSection {
   manuscript     Manuscript @relation(fields: [manuscriptId], references: [id], onDelete: Cascade)
   projectDay     ProjectDay @relation(fields: [projectDayId], references: [id], onDelete: Cascade)
 }
+
+model ImportJob {
+  id            String    @id @default(uuid())
+  projectDayId  String
+  platform      String    @default("TIKTOK")
+  videoUrl      String
+  status        String    @default("PENDING") // PENDING, PROCESSING, COMPLETED, FAILED, CANCELLED
+  totalFetched  Int       @default(0)
+  totalSaved    Int       @default(0)
+  progress      Int       @default(0)
+  errorMessage  String?
+  logs          String?
+  startedAt     DateTime  @default(now())
+  completedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+

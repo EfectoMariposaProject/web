@@ -96,9 +96,10 @@ export async function GET(req: NextRequest) {
     }
 
     const list = await repo.getContributionsByDay(project_day_id);
-    return NextResponse.json({ success: true, contributions: list });
+    const participants = await repo.getAllParticipants();
+    return NextResponse.json({ success: true, contributions: list, participants });
   } catch (error: any) {
-    return NextResponse.json({ success: false, contributions: [], error: error.message });
+    return NextResponse.json({ success: false, contributions: [], participants: [], error: error.message });
   }
 }
 

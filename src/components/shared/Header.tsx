@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Feather, BookOpen, Layers, History, Shield, LayoutDashboard, Sparkles, Library, ScrollText } from 'lucide-react';
+import { GlobalNotificationBell } from './GlobalNotificationBell';
 
 export function Header() {
   const pathname = usePathname();
@@ -56,6 +57,7 @@ export function Header() {
         </nav>
 
         <div className="flex items-center gap-3">
+          <GlobalNotificationBell />
           <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-900 text-xs font-mono font-bold">
             <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
             <span>SUPER_ADMIN</span>
