@@ -73,6 +73,8 @@ model SocialPost {
   commentsLockedAt   DateTime?
   lastCheckedAt      DateTime?
   status             String     @default("abierto")
+  totalCommentsDeclared Int?
+  screenshotUrl      String?
   createdAt          DateTime   @default(now())
 
   projectDay         ProjectDay @relation(fields: [projectDayId], references: [id], onDelete: Cascade)
@@ -134,6 +136,9 @@ model Contribution {
   essencePreserved             Boolean?
   editorialNotes               String?
   aiAnalysisJson               String?
+  rawJson                      String?
+  replyToCommentId             String?
+  isReply                      Boolean      @default(false)
   createdAt                    DateTime     @default(now())
   updatedAt                    DateTime     @updatedAt
 
@@ -279,10 +284,15 @@ model ImportJob {
   projectDayId  String
   platform      String    @default("TIKTOK")
   videoUrl      String
-  status        String    @default("PENDING") // PENDING, PROCESSING, COMPLETED, FAILED, CANCELLED
-  totalFetched  Int       @default(0)
-  totalSaved    Int       @default(0)
-  progress      Int       @default(0)
+  status                  String    @default("PENDING") // PENDING, PROCESSING, COMPLETED, FAILED, CANCELLED
+  totalDeclaredByPlatform Int       @default(0)
+  totalFetched            Int       @default(0)
+  totalSaved              Int       @default(0)
+  topLevelCount           Int       @default(0)
+  replyCount              Int       @default(0)
+  filteredCount           Int       @default(0)
+  screenshotUrl           String?
+  progress                Int       @default(0)
   errorMessage  String?
   logs          String?
   startedAt     DateTime  @default(now())

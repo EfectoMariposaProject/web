@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   RefreshCw, CheckCircle2, AlertTriangle, Terminal, 
-  ChevronDown, ChevronUp, Database, CloudDownload
+  ChevronDown, ChevronUp, Database, CloudDownload, Camera, ExternalLink, Filter, MessageSquare, CornerDownRight
 } from 'lucide-react';
 
 export interface ImportJobState {
@@ -13,8 +13,13 @@ export interface ImportJobState {
   videoUrl: string;
   status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
   progress: number;
+  totalDeclaredByPlatform?: number;
   totalFetched: number;
   totalSaved: number;
+  topLevelCount?: number;
+  replyCount?: number;
+  filteredCount?: number;
+  screenshotUrl?: string | null;
   errorMessage?: string | null;
   parsedLogs?: string[];
   startedAt?: string;
@@ -184,19 +189,57 @@ export function TikTokBackgroundJobWidget({
           </div>
         </div>
 
-        {/* Live Counters */}
-        <div className="flex items-center gap-2 self-end sm:self-center font-mono text-xs">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-lg border border-slate-200 shadow-2xs">
+        {/* Live Counters & Audit Breakdown */}
+        <div className="flex flex-wrap items-center gap-2 self-end sm:self-center font-mono text-xs">
+          {job.totalDeclaredByPlatform ? (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-white rounded-lg shadow-2xs" title="Total que declara TikTok en su interfaz">
+              <MessageSquare className="w-3.5 h-3.5 text-blue-400" />
+              <span className="text-slate-300 font-medium">TikTok Declarados:</span>
+              <span className="font-bold text-white">{job.totalDeclaredByPlatform}</span>
+            </div>
+          ) : null}
+
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-lg border border-slate-200 shadow-2xs" title="Comentarios principales de nivel superior">
             <CloudDownload className="w-3.5 h-3.5 text-blue-600" />
-            <span className="text-slate-600 font-medium">Extraídos:</span>
-            <span className="font-bold text-slate-900">{job.totalFetched}</span>
+            <span className="text-slate-600 font-medium">Principales:</span>
+            <span className="font-bold text-slate-900">{job.topLevelCount ?? job.totalFetched}</span>
           </div>
+
+          {job.replyCount ? (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-lg border border-slate-200 shadow-2xs" title="Respuestas secundarias anidadas">
+              <CornerDownRight className="w-3.5 h-3.5 text-indigo-600" />
+              <span className="text-slate-600 font-medium">Anidados:</span>
+              <span className="font-bold text-slate-900">{job.replyCount}</span>
+            </div>
+          ) : null}
+
+          {job.filteredCount ? (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-900 rounded-lg border border-amber-200 shadow-2xs" title="Comentarios eliminados u ocultos por TikTok">
+              <Filter className="w-3.5 h-3.5 text-amber-600" />
+              <span className="text-amber-700 font-medium">Ocultos/Filtrados:</span>
+              <span className="font-bold text-amber-950">{job.filteredCount}</span>
+            </div>
+          ) : null}
 
           <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-lg border border-slate-200 shadow-2xs">
             <Database className="w-3.5 h-3.5 text-emerald-600" />
-            <span className="text-slate-600 font-medium">Guardados:</span>
+            <span className="text-slate-600 font-medium">Archivados:</span>
             <span className="font-bold text-slate-900">{job.totalSaved}</span>
           </div>
+
+          {job.screenshotUrl && (
+            <a
+              href={job.screenshotUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow-2xs transition-colors"
+              title="Ver captura de pantalla en vivo de la publicación de TikTok"
+            >
+              <Camera className="w-3.5 h-3.5" />
+              <span>Evidencia</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          )}
 
           {job.parsedLogs && job.parsedLogs.length > 0 && (
             <button

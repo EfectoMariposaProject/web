@@ -11,6 +11,9 @@ export interface RawImportedComment {
   created_at?: string;
   language?: string;
   platform_comment_url?: string;
+  rawJson?: string;
+  replyToCommentId?: string;
+  isReply?: boolean;
 }
 
 export interface ImportBatchResult {

@@ -72,6 +72,22 @@ export class TikTokBackgroundFetcher {
         return data;
       }
 
+      const screenshotUrl = `https://api.microlink.io/?url=${encodeURIComponent(videoUrl)}&screenshot=true&embed=screenshot.url`;
+      let declaredTotalFromApi = 0;
+
+      // Try fetching video oEmbed / meta for declared total comments
+      try {
+        const oembedRes = await fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(videoUrl)}`);
+        if (oembedRes.ok) {
+          const oembedData = await oembedRes.json();
+          if (oembedData && typeof oembedData.comment_count === 'number') {
+            declaredTotalFromApi = oembedData.comment_count;
+          }
+        }
+      } catch {
+        // ignore
+      }
+
       const commentsMap = new Map<string, any>();
 
       // 1. Fetch top-level comments (both sort_types)
@@ -93,11 +109,16 @@ export class TikTokBackgroundFetcher {
             }).toString();
 
             const data = await getJson(apiUrl.toString());
+            if (data.total && typeof data.total === 'number' && data.total > declaredTotalFromApi) {
+              declaredTotalFromApi = data.total;
+            }
+
             const comments = data.comments ?? [];
 
             comments.forEach((c: any) => {
               const cid = String(c.cid ?? '');
               if (cid && !commentsMap.has(cid)) {
+                c._isReply = false;
                 commentsMap.set(cid, c);
               }
             });
@@ -157,6 +178,8 @@ export class TikTokBackgroundFetcher {
               replyComments.forEach((rc: any) => {
                 const rCid = String(rc.cid ?? '');
                 if (rCid && !commentsMap.has(rCid)) {
+                  rc._isReply = true;
+                  rc._replyToCommentId = String(comment.cid);
                   commentsMap.set(rCid, rc);
                 }
               });
@@ -191,6 +214,11 @@ export class TikTokBackgroundFetcher {
       await addLog(`Estructurando y validando ${commentsMap.size} comentarios únicos...`);
 
       const allFetchedComments = Array.from(commentsMap.values());
+      const topLevelCount = allFetchedComments.filter((c) => !c._isReply).length;
+      const replyCount = allFetchedComments.filter((c) => c._isReply).length;
+      const finalDeclaredTotal = Math.max(declaredTotalFromApi, allFetchedComments.length);
+      const filteredCount = Math.max(0, finalDeclaredTotal - allFetchedComments.length);
+
       const rawComments = allFetchedComments.map((comment) => {
         const user = comment.user ?? {};
         const timestamp = Number(comment.create_time);
@@ -215,6 +243,9 @@ export class TikTokBackgroundFetcher {
             ? new Date(timestamp * 1000).toISOString()
             : new Date().toISOString(),
           platform_comment_url: `https://www.tiktok.com/@${username}`,
+          rawJson: JSON.stringify(comment),
+          replyToCommentId: comment._replyToCommentId || undefined,
+          isReply: !!comment._isReply,
         };
       });
 
@@ -246,15 +277,23 @@ export class TikTokBackgroundFetcher {
         );
       }
 
-      await addLog(`Guardado completado: ${batchResult.contributions.length} comentarios archivados con secuencias consecutivas #1 a #${batchResult.contributions.length}.`);
+      await addLog(
+        `Guardado completado: ${batchResult.contributions.length} comentarios archivados (#1 a #${batchResult.contributions.length}). ` +
+          `[Principales: ${topLevelCount}, Respuestas Anidadas: ${replyCount}, Ocultos/Filtrados: ${filteredCount}]`
+      );
 
       await prisma.importJob.update({
         where: { id: jobId },
         data: {
           status: 'COMPLETED',
           progress: 100,
+          totalDeclaredByPlatform: finalDeclaredTotal,
           totalFetched: allFetchedComments.length,
           totalSaved: batchResult.contributions.length,
+          topLevelCount,
+          replyCount,
+          filteredCount,
+          screenshotUrl,
           completedAt: new Date(),
         },
       });

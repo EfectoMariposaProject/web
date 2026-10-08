@@ -197,6 +197,9 @@ export class CSVImporter implements CommentImporter {
         validation_status: valResult.valid ? 'VALID' : 'INVALID',
         validation_reasons: valResult.reasons,
         selected_by_rule: false,
+        raw_json: raw.rawJson,
+        reply_to_comment_id: raw.replyToCommentId,
+        is_reply: raw.isReply ?? false,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };

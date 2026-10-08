@@ -132,6 +132,9 @@ export interface Contribution {
   essence_preserved?: boolean;
   editorial_notes?: string;
   ai_analysis_json?: Record<string, unknown>;
+  raw_json?: string;
+  reply_to_comment_id?: string;
+  is_reply?: boolean;
   created_at: string;
   updated_at: string;
 }

@@ -165,6 +165,9 @@ export class StoryRepository {
               status: c.status,
               validationStatus: c.validation_status,
               validationReasons: JSON.stringify(c.validation_reasons || []),
+              rawJson: c.raw_json,
+              replyToCommentId: c.reply_to_comment_id,
+              isReply: c.is_reply ?? false,
               receivedAt: c.received_at ? new Date(c.received_at) : existingContrib.receivedAt,
             },
           });
@@ -192,6 +195,9 @@ export class StoryRepository {
               status: c.status,
               validationStatus: c.validation_status,
               validationReasons: JSON.stringify(c.validation_reasons || []),
+              rawJson: c.raw_json,
+              replyToCommentId: c.reply_to_comment_id,
+              isReply: c.is_reply ?? false,
             },
           });
         }
