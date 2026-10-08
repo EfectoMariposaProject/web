@@ -108,13 +108,13 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Database Persistence Settings */}
+        {/* Database Persistence & Reset Settings */}
         <div className="glass-panel p-6 rounded-2xl border border-slate-200 bg-white shadow-xs space-y-4">
           <h2 className="text-base font-serif font-bold text-slate-900 flex items-center gap-2">
-            <Database className="w-4 h-4 text-amber-600" /> Persistencia de Datos
+            <Database className="w-4 h-4 text-amber-600" /> Persistencia y Purgado de Datos
           </h2>
 
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div>
               <label className="text-xs font-bold text-slate-700 block mb-1">Motor de Persistencia:</label>
               <input
@@ -124,9 +124,38 @@ export default function SettingsPage() {
                 className="w-full bg-slate-100 border border-slate-300 rounded-lg p-2.5 text-xs text-slate-800 font-mono font-bold"
               />
             </div>
-            <p className="text-xs text-slate-600 font-medium">
-              Fase 1 local activa mediante Prisma ORM SQLite (`prisma/dev.db`). Preparado para migración futura a Supabase PostgreSQL.
-            </p>
+
+            <div className="pt-3 border-t border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-xs font-bold text-rose-950 font-mono uppercase">Reiniciar Jornadas y Escaneos</h3>
+                <p className="text-xs text-slate-600">
+                  Elimina todos los comentarios, participaciones archivadas y logs de descargas para iniciar desde cero.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  if (confirm('¿Estás seguro de que deseas purgar y reiniciar TODAS las jornadas y datos de escaneo?')) {
+                    try {
+                      const res = await fetch('/api/contributions', { method: 'DELETE' });
+                      const data = await res.json();
+                      if (data.success) {
+                        alert('✅ ' + data.message);
+                        window.location.reload();
+                      } else {
+                        alert('❌ Error: ' + data.error);
+                      }
+                    } catch (err: any) {
+                      alert('❌ Error al resetear: ' + err.message);
+                    }
+                  }
+                }}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors shrink-0"
+              >
+                Resetear Todas las Jornadas
+              </button>
+            </div>
           </div>
         </div>
 

@@ -103,4 +103,32 @@ export async function GET(req: NextRequest) {
   }
 }
 
+export async function DELETE(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const projectDayId = searchParams.get('projectDayId');
+    const { prisma } = await import('@/lib/db/prisma');
+
+    if (projectDayId) {
+      await prisma.selectionAuditLog.deleteMany({ where: { projectDayId } });
+      await prisma.dailySelectionRule.deleteMany({ where: { projectDayId } });
+      await prisma.contribution.deleteMany({ where: { projectDayId } });
+      await prisma.importJob.deleteMany({ where: { projectDayId } });
+      await prisma.socialPost.deleteMany({ where: { projectDayId } });
+      return NextResponse.json({ success: true, message: `Jornada ${projectDayId} reseteada exitosamente.` });
+    }
+
+    await prisma.selectionAuditLog.deleteMany();
+    await prisma.dailySelectionRule.deleteMany();
+    await prisma.contribution.deleteMany();
+    await prisma.importJob.deleteMany();
+    await prisma.socialPost.deleteMany();
+    await prisma.participant.deleteMany();
+
+    return NextResponse.json({ success: true, message: 'Todas las jornadas y datos de escaneo reseteados completamente.' });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
 
