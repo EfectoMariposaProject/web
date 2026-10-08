@@ -72,7 +72,8 @@ export class TikTokBackgroundFetcher {
         return data;
       }
 
-      const screenshotUrl = `https://api.microlink.io/?url=${encodeURIComponent(videoUrl)}&screenshot=true&embed=screenshot.url`;
+      const embedTargetUrl = videoId ? `https://www.tiktok.com/embed/v2/${videoId}` : videoUrl;
+      const screenshotUrl = `https://api.microlink.io/?url=${encodeURIComponent(embedTargetUrl)}&screenshot=true&embed=screenshot.url`;
       let declaredTotalFromApi = 0;
 
       // Try fetching video oEmbed / meta for declared total comments
