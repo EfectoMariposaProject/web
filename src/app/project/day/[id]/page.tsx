@@ -12,12 +12,13 @@ import {
   FileSpreadsheet, MousePointerClick, Download
 } from 'lucide-react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useEmpCache } from '@/lib/cache/CacheProvider';
 import { TikTokBackgroundJobWidget, ImportJobState } from '@/components/tiktok/TikTokBackgroundJobWidget';
 
 export default function DailyProjectPage() {
   const params = useParams();
+  const router = useRouter();
   const dayParam = params?.id ? Number(params.id) : 1;
   const challengeDay = isNaN(dayParam) || dayParam < 1 ? 1 : Math.min(dayParam, 80);
   const projectDayId = `day-${String(challengeDay).padStart(3, '0')}`;
@@ -501,10 +502,29 @@ export default function DailyProjectPage() {
       {/* Header section */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 pb-6">
         <div>
-          <div className="flex items-center gap-2 text-blue-900 text-xs font-mono font-bold mb-1">
+          <div className="flex items-center gap-2.5 text-blue-900 text-xs font-mono font-bold mb-1 flex-wrap">
             <span>PUBLICACIÓN DIARIA OFICIAL: {postId}</span>
             <span>•</span>
             <span>{dayLabel}</span>
+            <span>•</span>
+            <div className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-900 px-2.5 py-0.5 rounded-lg border border-blue-200 shadow-2xs">
+              <span className="text-[11px] font-bold text-blue-800">Cambiar Día:</span>
+              <select
+                value={challengeDay}
+                onChange={(e) => router.push(`/project/day/${e.target.value}`)}
+                className="bg-white border border-blue-300 text-blue-950 font-bold text-xs px-2 py-0.5 rounded outline-none cursor-pointer hover:border-blue-500 transition-colors"
+                title="Selecciona el Día que deseas analizar (1 a 80)"
+              >
+                {Array.from({ length: 80 }, (_, i) => i + 1).map((d) => {
+                  const w = Math.ceil(d / 5);
+                  return (
+                    <option key={d} value={d}>
+                      Día {String(d).padStart(2, '0')} (Semana {w})
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
           </div>
           <h1 className="text-3xl font-serif font-bold text-slate-900 flex items-center gap-3">
             Publicación Diaria Activa
