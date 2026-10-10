@@ -93,31 +93,43 @@ export class SelectionService {
 
     if (!selectedContribution) {
       const targetItem = contributionsMap.get(targetSequence);
-      selectedContribution = targetItem || {
-        id: `contrib_${projectDayId}_target_${targetSequence}`,
-        project_id: projectDayId,
-        project_day_id: projectDayId,
-        global_comment_code: 'EMP-COM-000000',
-        daily_comment_code: `D${String(Number(projectDayId.replace(/\D/g, '')) || 1).padStart(2, '0')}-C${String(targetSequence).padStart(4, '0')}`,
-        internal_id: `D${String(Number(projectDayId.replace(/\D/g, '')) || 1).padStart(2, '0')}-C${String(targetSequence).padStart(4, '0')}`,
-        participant_id: 'sin_participante',
-        author_handle: 'sin_participante',
-        original_text: `No se encontró ningún comentario en la cadena +3 que cumpla con el rango obligatorio de 100 a 150 palabras para el objetivo #${targetSequence}.`,
-        original_hash: '',
-        normalized_text: '',
-        word_count: 0,
-        capture_sequence: targetSequence,
-        received_at: new Date().toISOString(),
-        age_declaration_status: 'invalid_age_detected',
-        terms_accepted: false,
-        late_comment: false,
-        status: 'INVALID',
-        validation_status: 'INVALID',
-        validation_reasons: ['Sin candidato válido (100-150 palabras) en cadena +3'],
-        selected_by_rule: false,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
+      if (targetItem) {
+        const existingReasons = targetItem.validation_reasons || [];
+        const fallbackReason = `Sin candidato válido (100-150 palabras) en la cadena +3 para el objetivo #${targetSequence}`;
+        selectedContribution = {
+          ...targetItem,
+          validation_status: 'INVALID',
+          validation_reasons: existingReasons.includes(fallbackReason)
+            ? existingReasons
+            : [...existingReasons, fallbackReason],
+        };
+      } else {
+        selectedContribution = {
+          id: `contrib_${projectDayId}_target_${targetSequence}`,
+          project_id: projectDayId,
+          project_day_id: projectDayId,
+          global_comment_code: 'EMP-COM-000000',
+          daily_comment_code: `D${String(Number(projectDayId.replace(/\D/g, '')) || 1).padStart(2, '0')}-C${String(targetSequence).padStart(4, '0')}`,
+          internal_id: `D${String(Number(projectDayId.replace(/\D/g, '')) || 1).padStart(2, '0')}-C${String(targetSequence).padStart(4, '0')}`,
+          participant_id: 'sin_participante',
+          author_handle: 'sin_participante',
+          original_text: `No se encontró ningún comentario en la cadena +3 que cumpla con el rango obligatorio de 100 a 150 palabras para el objetivo #${targetSequence}.`,
+          original_hash: '',
+          normalized_text: '',
+          word_count: 0,
+          capture_sequence: targetSequence,
+          received_at: new Date().toISOString(),
+          age_declaration_status: 'invalid_age_detected',
+          terms_accepted: false,
+          late_comment: false,
+          status: 'INVALID',
+          validation_status: 'INVALID',
+          validation_reasons: [`Sin candidato válido (100-150 palabras) en la cadena +3 para el objetivo #${targetSequence}`],
+          selected_by_rule: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+      }
       replacementApplied = true;
       finalReason = `Sin comentarios en el rango 100-150 palabras en la secuencia +3 desde objetivo #${targetSequence}`;
     }

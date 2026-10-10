@@ -296,11 +296,29 @@ export default function DailyProjectPage() {
       setCurrentPage(1);
       invalidateDay(projectDayId);
 
-      showCustomNotification(
-        'SUCCESS',
-        '¡Motor +3 Ejecutado con Éxito!',
-        `Se han procesado los 3 Slots objetivo (#${target1}, #${target2}, #${target3}) sobre ${totalItems} participaciones capturadas.`
-      );
+      const invalidSlots = results.filter((r) => r.selectedContribution.validation_status !== 'VALID');
+      if (invalidSlots.length === 3) {
+        showCustomNotification(
+          'ERROR',
+          'Sin Candidatos Válidos Encontrados',
+          `Se procesaron ${totalItems} comentarios. Ninguno cumple con la regla de 100 a 150 palabras. En los 3 Slots (#${target1}, #${target2}, #${target3}) no se halló candidato válido en la cadena +3 y se marcó el estado de fallback.`
+        );
+      } else if (invalidSlots.length > 0) {
+        const slotDesc = invalidSlots
+          .map((r) => `Slot ${r.slotRule.slot_number} (Objetivo #${r.slotRule.target_sequence})`)
+          .join(', ');
+        showCustomNotification(
+          'INFO',
+          'Motor +3 Ejecutado (Con Observaciones)',
+          `Se evaluaron las ${totalItems} participaciones. Los siguientes slots no hallaron comentario válido en la cadena +3: ${slotDesc}.`
+        );
+      } else {
+        showCustomNotification(
+          'SUCCESS',
+          '¡Motor +3 Ejecutado con Éxito!',
+          `Se han seleccionado los 3 ganadores oficiales cumpliendo la regla de 100-150 palabras para los Slots (#${target1}, #${target2}, #${target3}).`
+        );
+      }
     } catch (err: any) {
       showCustomNotification('ERROR', 'Error en Ejecución de Motor', err.message);
     } finally {
@@ -873,8 +891,10 @@ export default function DailyProjectPage() {
                       <tr
                         key={contrib.id || contrib.capture_sequence}
                         className={`transition-colors text-xs border-b border-slate-200 ${
-                          isSelected
+                          isSelected && isValid
                             ? 'bg-emerald-100 text-emerald-950 font-bold border-l-4 border-l-emerald-600 hover:bg-emerald-200/80'
+                            : isSelected && !isValid
+                            ? 'bg-rose-100/90 text-rose-950 font-bold border-l-4 border-l-rose-600 hover:bg-rose-200/80'
                             : isTarget
                             ? 'bg-amber-100 text-amber-950 font-bold border-l-4 border-l-amber-500 hover:bg-amber-200/80'
                             : 'bg-white hover:bg-slate-50 text-slate-800'
@@ -883,9 +903,15 @@ export default function DailyProjectPage() {
                         {/* Secuencia # & Slot Badge (only shown for assigned slots / target) */}
                         <td className="p-3 text-center font-bold border-r border-slate-200 text-slate-700">
                           {isSelected ? (
-                            <span className="bg-emerald-600 text-white px-2 py-0.5 rounded font-extrabold text-[10px] shadow-2xs whitespace-nowrap" title={`Asignado a Slot ${selectedInfo.slotNumber}`}>
-                              #{contrib.capture_sequence} ⭐ Slot {selectedInfo.slotNumber}
-                            </span>
+                            isValid ? (
+                              <span className="bg-emerald-600 text-white px-2 py-0.5 rounded font-extrabold text-[10px] shadow-2xs whitespace-nowrap" title={`Asignado a Slot ${selectedInfo.slotNumber}`}>
+                                #{contrib.capture_sequence} ⭐ Slot {selectedInfo.slotNumber}
+                              </span>
+                            ) : (
+                              <span className="bg-rose-600 text-white px-2 py-0.5 rounded font-extrabold text-[10px] shadow-2xs whitespace-nowrap animate-pulse" title={`Slot ${selectedInfo.slotNumber}: Sin candidato válido (100-150 palabras) en cadena +3`}>
+                                #{contrib.capture_sequence} ⚠️ Slot {selectedInfo.slotNumber} (Inválido +3)
+                              </span>
+                            )
                           ) : isTarget ? (
                             <span className="bg-amber-500 text-slate-950 px-2 py-0.5 rounded font-extrabold text-[10px] shadow-2xs whitespace-nowrap" title={`Objetivo Slot ${targetSlotNumber}`}>
                               #{contrib.capture_sequence} 🎯 Slot {targetSlotNumber}
@@ -962,6 +988,15 @@ export default function DailyProjectPage() {
                             <span className="text-emerald-700 font-extrabold text-sm tracking-wide">
                               Si
                             </span>
+                          ) : isSelected ? (
+                            <div className="flex flex-col items-center">
+                              <span className="text-rose-600 font-extrabold text-sm tracking-wide">
+                                No
+                              </span>
+                              <span className="text-[9px] font-mono text-rose-800 font-bold bg-rose-200/80 px-1.5 py-0.5 rounded border border-rose-300 whitespace-nowrap mt-0.5">
+                                Sin candidato +3
+                              </span>
+                            </div>
                           ) : (
                             <span className="text-rose-600 font-extrabold text-sm tracking-wide">
                               No

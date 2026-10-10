@@ -43,11 +43,10 @@ export function Header() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all ${
-                  isActive
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all ${isActive
                     ? 'bg-blue-600 text-white shadow-sm border border-blue-700'
                     : 'text-slate-700 hover:text-slate-950 hover:bg-slate-200/70'
-                }`}
+                  }`}
               >
                 <Icon className="w-3.5 h-3.5" />
                 {item.name}
