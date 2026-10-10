@@ -761,7 +761,9 @@ export default function DailyProjectPage() {
                       }`}
                     />
                     {allContributions.length > 0 && (
-                      <Lock className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" title="Enlace guardado para esta jornada" />
+                      <span title="Enlace guardado para esta jornada">
+                        <Lock className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
+                      </span>
                     )}
                   </div>
 
