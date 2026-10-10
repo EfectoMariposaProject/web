@@ -146,7 +146,10 @@ export default function DailyProjectPage() {
       showCustomNotification('ERROR', 'Error al Iniciar Extracción', err.message);
     } finally {
       setIsFetchingTikTok(false);
-     const handleJobCompleted = async (completedJob: ImportJobState) => {
+    }
+  };
+
+  const handleJobCompleted = async (completedJob: ImportJobState) => {
     if (completedJob.videoUrl) {
       setSavedVideoUrl(completedJob.videoUrl);
       setTiktokUrl(completedJob.videoUrl);
@@ -436,11 +439,6 @@ export default function DailyProjectPage() {
     };
 
     loadSavedContributions();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [target1, target2, target3, projectDayId, fetchWithCache]);adSavedContributions();
 
     return () => {
       isCancelled = true;
