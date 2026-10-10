@@ -9,7 +9,7 @@ import {
   Sparkles, Upload, Play, CheckCircle2, AlertCircle, Hash, Feather, RefreshCw, 
   Lock, ShieldCheck, Clock, Search, Filter, Star, Award, Check, X, User,
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, MessageSquare, Target, Grid as GridIcon, Table as TableIcon,
-  FileSpreadsheet, MousePointerClick, Download
+  FileSpreadsheet, MousePointerClick, Download, ChevronDown, ChevronUp, ExternalLink
 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
@@ -37,6 +37,8 @@ export default function DailyProjectPage() {
   const [narrativeLine] = useState('Hoy define qué miedo persigue al protagonista.');
 
   const [tiktokUrl, setTiktokUrl] = useState('');
+  const [savedVideoUrl, setSavedVideoUrl] = useState('');
+  const [isConfigCollapsed, setIsConfigCollapsed] = useState(true);
   const [isFetchingTikTok, setIsFetchingTikTok] = useState(false);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
 
@@ -144,10 +146,12 @@ export default function DailyProjectPage() {
       showCustomNotification('ERROR', 'Error al Iniciar Extracción', err.message);
     } finally {
       setIsFetchingTikTok(false);
+     const handleJobCompleted = async (completedJob: ImportJobState) => {
+    if (completedJob.videoUrl) {
+      setSavedVideoUrl(completedJob.videoUrl);
+      setTiktokUrl(completedJob.videoUrl);
     }
-  };
-
-  const handleJobCompleted = async (completedJob: ImportJobState) => {
+    setIsConfigCollapsed(true);
     invalidateDay(projectDayId);
     try {
       const res = await fetch(`/api/contributions?projectDayId=${projectDayId}&_t=${Date.now()}`);
@@ -186,7 +190,6 @@ export default function DailyProjectPage() {
       console.warn('Error al recargar contribuciones tras completar job:', err);
     }
   };
-
 
   const handleDownloadExcelCSV = () => {
     if (allContributions.length === 0) {
@@ -262,6 +265,7 @@ export default function DailyProjectPage() {
           batch.participants.forEach((p) => participantsMap.set(p.id, p));
           batch.contributions.forEach((c) => contributionsMap.set(c.capture_sequence, c));
           setAllContributions(Array.from(contributionsMap.values()));
+          setIsConfigCollapsed(true);
           invalidateDay(projectDayId);
         }
       } else if (allContributions.length > 0) {
@@ -273,6 +277,7 @@ export default function DailyProjectPage() {
         if (data.success && Array.isArray(data.contributions) && data.contributions.length > 0) {
           const fetchedContribs: Contribution[] = data.contributions;
           setAllContributions(fetchedContribs);
+          setIsConfigCollapsed(true);
           fetchedContribs.forEach((c) => contributionsMap.set(c.capture_sequence, c));
         } else {
           showCustomNotification(
@@ -383,12 +388,30 @@ export default function DailyProjectPage() {
 
     const loadSavedContributions = async () => {
       try {
+        // Query recent jobs for saved videoUrl
+        try {
+          const jobsRes = await fetch(`/api/tiktok/jobs?projectDayId=${projectDayId}`);
+          if (jobsRes.ok) {
+            const jobsData = await jobsRes.json();
+            if (jobsData.success && Array.isArray(jobsData.jobs) && jobsData.jobs.length > 0) {
+              const latestJob = jobsData.jobs[0];
+              if (latestJob.videoUrl) {
+                setSavedVideoUrl(latestJob.videoUrl);
+                setTiktokUrl(latestJob.videoUrl);
+              }
+            }
+          }
+        } catch {
+          // ignore
+        }
+
         const data = await fetchWithCache(`/api/contributions?projectDayId=${projectDayId}`);
         if (isCancelled) return;
 
         if (data.success && Array.isArray(data.contributions) && data.contributions.length > 0) {
           const fetchedContribs: Contribution[] = data.contributions;
           setAllContributions(fetchedContribs);
+          setIsConfigCollapsed(true);
           const contributionsMap = new Map<number, Contribution>();
           const participantsMap = new Map<string, Participant>();
           fetchedContribs.forEach((c) => contributionsMap.set(c.capture_sequence, c));
@@ -401,16 +424,23 @@ export default function DailyProjectPage() {
         } else {
           setAllContributions([]);
           setSlotResults(null);
+          setIsConfigCollapsed(false);
         }
       } catch (err) {
         if (!isCancelled) {
           setAllContributions([]);
           setSlotResults(null);
+          setIsConfigCollapsed(false);
         }
       }
     };
 
     loadSavedContributions();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [target1, target2, target3, projectDayId, fetchWithCache]);adSavedContributions();
 
     return () => {
       isCancelled = true;
@@ -593,105 +623,196 @@ export default function DailyProjectPage() {
         onJobComplete={handleJobCompleted}
       />
 
-      {/* Target IDs Config & CSV Importer Panel */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="glass-panel p-6 rounded-2xl border border-slate-200 bg-white shadow-xs space-y-4">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-blue-900 flex items-center gap-2 font-mono">
-            <Hash className="w-4 h-4 text-blue-600" /> Configuración de 3 IDs Objetivo
-          </h2>
-
-          <div className="space-y-3">
-            <div>
-              <label className="text-xs font-bold text-slate-700 block mb-1">SLOT 1 (Objetivo Inicial):</label>
-              <input
-                type="number"
-                value={target1}
-                onChange={(e) => setTarget1(Number(e.target.value))}
-                className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 font-mono font-bold focus:border-blue-500 outline-none"
-              />
+      {/* Target IDs Config & CSV Importer Panel (Collapsible) */}
+      {isConfigCollapsed && allContributions.length > 0 ? (
+        /* Contracted / Collapsed Summary View */
+        <div className="glass-panel p-4.5 rounded-2xl border border-blue-200 bg-white shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4 font-sans">
+          {/* Target Slots Summary */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-1.5 text-blue-900 font-mono text-xs font-bold">
+              <Hash className="w-4 h-4 text-blue-600" />
+              <span className="uppercase tracking-wider">Configuración de IDs Objetivo:</span>
             </div>
-            <div>
-              <label className="text-xs font-bold text-slate-700 block mb-1">SLOT 2 (Objetivo Inicial):</label>
-              <input
-                type="number"
-                value={target2}
-                onChange={(e) => setTarget2(Number(e.target.value))}
-                className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 font-mono font-bold focus:border-blue-500 outline-none"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-bold text-slate-700 block mb-1">SLOT 3 (Objetivo Inicial):</label>
-              <input
-                type="number"
-                value={target3}
-                onChange={(e) => setTarget3(Number(e.target.value))}
-                className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 font-mono font-bold focus:border-blue-500 outline-none"
-              />
+            <div className="flex items-center gap-2 font-mono text-xs">
+              <span className="px-3 py-1 bg-blue-50 text-blue-950 font-bold rounded-xl border border-blue-200 shadow-2xs">
+                SLOT 1: <strong className="text-blue-700">#{target1}</strong>
+              </span>
+              <span className="px-3 py-1 bg-blue-50 text-blue-950 font-bold rounded-xl border border-blue-200 shadow-2xs">
+                SLOT 2: <strong className="text-blue-700">#{target2}</strong>
+              </span>
+              <span className="px-3 py-1 bg-blue-50 text-blue-950 font-bold rounded-xl border border-blue-200 shadow-2xs">
+                SLOT 3: <strong className="text-blue-700">#{target3}</strong>
+              </span>
             </div>
           </div>
-        </div>
 
-        {/* TikTok Live Extractor & CSV Importer */}
-        <div className="lg:col-span-2 glass-panel p-6 rounded-2xl border border-slate-200 bg-white shadow-xs space-y-5">
-          {/* Direct TikTok Extractor Input */}
-          <div className="bg-blue-50/70 p-4 rounded-xl border border-blue-200 space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-xs font-mono font-bold uppercase tracking-wider text-blue-900 flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-blue-600" /> Extractor Directo de TikTok (Motor EMP)
-              </span>
-              <span className="text-[10px] bg-blue-200 text-blue-900 px-2 py-0.5 rounded font-mono font-bold">
-                API LIST/REPLY
-              </span>
-            </div>
+          {/* Saved Link Badge & Action Button */}
+          <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
+            {(savedVideoUrl || tiktokUrl) && (
+              <div className="flex items-center gap-2 px-3.5 py-1.5 bg-slate-100 rounded-xl border border-slate-200 text-xs font-mono text-slate-700 max-w-xs sm:max-w-md truncate shadow-2xs">
+                <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <a
+                  href={savedVideoUrl || tiktokUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="truncate font-semibold hover:text-blue-600 hover:underline"
+                  title={savedVideoUrl || tiktokUrl}
+                >
+                  {savedVideoUrl || tiktokUrl}
+                </a>
+              </div>
+            )}
 
-            <div className="flex flex-col sm:flex-row gap-2">
-              <input
-                type="text"
-                value={tiktokUrl}
-                onChange={(e) => setTiktokUrl(e.target.value)}
-                placeholder="https://www.tiktok.com/@usuario/video/... o /photo/... o vt.tiktok.com/..."
-                className="flex-1 bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono text-slate-900 focus:border-blue-500 outline-none shadow-2xs"
-              />
+            <div className="flex items-center gap-2">
               <button
                 onClick={handleFetchTikTokComments}
                 disabled={isFetchingTikTok}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 whitespace-nowrap"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 whitespace-nowrap"
               >
-                {isFetchingTikTok ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-                <span>Descargar Comentarios TikTok</span>
+                {isFetchingTikTok ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                <span>Volver a descargar comentarios</span>
+              </button>
+
+              <button
+                onClick={() => setIsConfigCollapsed(false)}
+                className="p-2 text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors border border-slate-200"
+                title="Expandir panel de configuración de IDs y Extractor"
+              >
+                <ChevronDown className="w-4 h-4" />
               </button>
             </div>
-            <p className="text-[11px] text-slate-600 font-medium">
-              Soporta cualquier publicación de TikTok (videos, fotos/carruseles y enlaces móviles cortos).
-            </p>
-          </div>
-
-          <div className="flex justify-between items-center">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-blue-900 flex items-center gap-2 font-mono">
-              <Upload className="w-4 h-4 text-blue-600" /> O Pega CSV de Comentarios (Mín 100 - Máx 150 Palabras)
-            </h2>
-            <span className="text-xs text-slate-500 font-mono font-bold">{allContributions.length} participaciones capturadas</span>
-          </div>
-
-          <textarea
-            rows={3}
-            value={csvInput}
-            onChange={(e) => setCsvInput(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-300 rounded-lg p-3 text-xs font-mono text-slate-900 focus:border-blue-500 outline-none shadow-2xs font-medium"
-            placeholder="author,username,text,likes,replies,created_at,language"
-          />
-
-          <div className="flex justify-between items-center text-xs text-slate-600 font-medium">
-            <span>Rango de palabras: <strong>100 a 150 palabras</strong>. Dual IDs: Global (EMP-COM-XXXXXX) y Diario (D{String(challengeDay).padStart(2,'0')}-C0001).</span>
-            <button
-              onClick={handleExecuteEngine}
-              className="text-blue-700 hover:text-blue-900 underline font-bold"
-            >
-              Procesar y Ejecutar Regla +3
-            </button>
           </div>
         </div>
-      </div>
+      ) : (
+        /* Expanded Full Configuration View */
+        <div className="space-y-3 font-sans">
+          {allContributions.length > 0 && (
+            <div className="flex justify-end">
+              <button
+                onClick={() => setIsConfigCollapsed(true)}
+                className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold border border-slate-300 transition-all"
+              >
+                <ChevronUp className="w-3.5 h-3.5" />
+                <span>Contraer panel de configuración</span>
+              </button>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="glass-panel p-6 rounded-2xl border border-slate-200 bg-white shadow-xs space-y-4">
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-blue-900 flex items-center gap-2 font-mono">
+                <Hash className="w-4 h-4 text-blue-600" /> Configuración de 3 IDs Objetivo
+              </h2>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">SLOT 1 (Objetivo Inicial):</label>
+                  <input
+                    type="number"
+                    value={target1}
+                    onChange={(e) => setTarget1(Number(e.target.value))}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 font-mono font-bold focus:border-blue-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">SLOT 2 (Objetivo Inicial):</label>
+                  <input
+                    type="number"
+                    value={target2}
+                    onChange={(e) => setTarget2(Number(e.target.value))}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 font-mono font-bold focus:border-blue-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">SLOT 3 (Objetivo Inicial):</label>
+                  <input
+                    type="number"
+                    value={target3}
+                    onChange={(e) => setTarget3(Number(e.target.value))}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 font-mono font-bold focus:border-blue-500 outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* TikTok Live Extractor & CSV Importer */}
+            <div className="lg:col-span-2 glass-panel p-6 rounded-2xl border border-slate-200 bg-white shadow-xs space-y-5">
+              {/* Direct TikTok Extractor Input */}
+              <div className="bg-blue-50/70 p-4 rounded-xl border border-blue-200 space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-mono font-bold uppercase tracking-wider text-blue-900 flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-blue-600" /> Extractor Directo de TikTok (Motor EMP)
+                  </span>
+                  <span className="text-[10px] bg-blue-200 text-blue-900 px-2 py-0.5 rounded font-mono font-bold">
+                    API LIST/REPLY
+                  </span>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      value={tiktokUrl}
+                      readOnly={allContributions.length > 0}
+                      onChange={(e) => setTiktokUrl(e.target.value)}
+                      placeholder="https://www.tiktok.com/@usuario/video/... o /photo/... o vt.tiktok.com/..."
+                      className={`w-full border rounded-lg px-3 py-2 text-xs font-mono outline-none shadow-2xs ${
+                        allContributions.length > 0
+                          ? 'bg-slate-100 text-slate-700 font-bold border-slate-300 cursor-not-allowed pr-8'
+                          : 'bg-white text-slate-900 focus:border-blue-500 border-slate-300'
+                      }`}
+                    />
+                    {allContributions.length > 0 && (
+                      <Lock className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" title="Enlace guardado para esta jornada" />
+                    )}
+                  </div>
+
+                  <button
+                    onClick={handleFetchTikTokComments}
+                    disabled={isFetchingTikTok}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 whitespace-nowrap"
+                  >
+                    {isFetchingTikTok ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                    <span>
+                      {allContributions.length > 0 ? 'Volver a descargar comentarios' : 'Descargar Comentarios TikTok'}
+                    </span>
+                  </button>
+                </div>
+                <p className="text-[11px] text-slate-600 font-medium">
+                  {allContributions.length > 0
+                    ? 'Enlace guardado oficialmente para la jornada. Para volver a descargar o cambiar la publicación, utiliza la confirmación de seguridad.'
+                    : 'Soporta cualquier publicación de TikTok (videos, fotos/carruseles y enlaces móviles cortos).'}
+                </p>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <h2 className="text-sm font-semibold uppercase tracking-wider text-blue-900 flex items-center gap-2 font-mono">
+                  <Upload className="w-4 h-4 text-blue-600" /> O Pega CSV de Comentarios (Mín 100 - Máx 150 Palabras)
+                </h2>
+                <span className="text-xs text-slate-500 font-mono font-bold">{allContributions.length} participaciones capturadas</span>
+              </div>
+
+              <textarea
+                rows={3}
+                value={csvInput}
+                onChange={(e) => setCsvInput(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-300 rounded-lg p-3 text-xs font-mono text-slate-900 focus:border-blue-500 outline-none shadow-2xs font-medium"
+                placeholder="author,username,text,likes,replies,created_at,language"
+              />
+
+              <div className="flex justify-between items-center text-xs text-slate-600 font-medium">
+                <span>Rango de palabras: <strong>100 a 150 palabras</strong>. Dual IDs: Global (EMP-COM-XXXXXX) y Diario (D{String(challengeDay).padStart(2,'0')}-C0001).</span>
+                <button
+                  onClick={handleExecuteEngine}
+                  className="text-blue-700 hover:text-blue-900 underline font-bold"
+                >
+                  Procesar y Ejecutar Regla +3
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
 
 
