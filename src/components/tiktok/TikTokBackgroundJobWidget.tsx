@@ -202,7 +202,9 @@ export function TikTokBackgroundJobWidget({
           <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-lg border border-slate-200 shadow-2xs" title="Comentarios principales de nivel superior">
             <CloudDownload className="w-3.5 h-3.5 text-blue-600" />
             <span className="text-slate-600 font-medium">Principales:</span>
-            <span className="font-bold text-slate-900">{job.topLevelCount ?? job.totalFetched}</span>
+            <span className="font-bold text-slate-900">
+              {(job.topLevelCount && job.topLevelCount > 0) ? job.topLevelCount : job.totalFetched}
+            </span>
           </div>
 
           {job.replyCount ? (

@@ -126,10 +126,12 @@ export class TikTokBackgroundFetcher {
 
             await addLog(`Capturados ${commentsMap.size} comentarios únicos (Página ${page + 1}).`);
 
+            const currentTopLevel = Array.from(commentsMap.values()).filter((c) => !c._isReply).length;
             await prisma.importJob.update({
               where: { id: jobId },
               data: {
                 totalFetched: commentsMap.size,
+                topLevelCount: currentTopLevel,
                 progress: Math.min(60, Math.round((commentsMap.size / (commentsMap.size + 50)) * 60)),
               },
             });
@@ -200,10 +202,14 @@ export class TikTokBackgroundFetcher {
           }
 
           if (i % 5 === 0 || i === commentsWithReplies.length - 1) {
+            const currentTopLevel = Array.from(commentsMap.values()).filter((c) => !c._isReply).length;
+            const currentReplies = Array.from(commentsMap.values()).filter((c) => c._isReply).length;
             await prisma.importJob.update({
               where: { id: jobId },
               data: {
                 totalFetched: commentsMap.size,
+                topLevelCount: currentTopLevel,
+                replyCount: currentReplies,
                 progress: Math.min(85, 60 + Math.round((i / commentsWithReplies.length) * 25)),
               },
             });
@@ -269,6 +275,7 @@ export class TikTokBackgroundFetcher {
 
       // Save in batches of 100 for maximum stability
       const chunkSize = 100;
+      let savedSoFar = 0;
       for (let i = 0; i < batchResult.contributions.length; i += chunkSize) {
         const chunkContribs = batchResult.contributions.slice(i, i + chunkSize);
         await this.repo.saveBatchContributions(
@@ -276,6 +283,14 @@ export class TikTokBackgroundFetcher {
           chunkContribs,
           batchResult.participants
         );
+        savedSoFar += chunkContribs.length;
+        await prisma.importJob.update({
+          where: { id: jobId },
+          data: {
+            totalSaved: savedSoFar,
+            progress: Math.min(99, 85 + Math.round((savedSoFar / batchResult.contributions.length) * 14)),
+          },
+        });
       }
 
       await addLog(
